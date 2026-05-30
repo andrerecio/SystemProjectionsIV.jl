@@ -1,0 +1,137 @@
+# SP-IV point estimator — local-projections (LP) variant.
+#
+# Implements the closed-form estimator and strong-identification sandwich variance
+# from docs/technical.md:
+#   - forecast-error stacking and FWL residualization   §3.2 / §4.1 (eq. A.1)
+#   - closed-form β̂                                      §3.2 (eq. 9)
+#   - feasible sandwich variance                         §5.3–5.4 (eqs. 18–19)
+#
+# Equation-number note: TODO.md refers to β̂ as "eq. 13" and the sandwich as
+# "eq. 19". In docs/technical.md, eq. (9) is the GMM closed form actually computed
+# here; eq. (13) is the *equivalent* IRF-OLS characterization (cross-checked in the
+# tests); eqs. (18)/(19) give the variance.
+
+# ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+# Stack H future leads of each column of V (T × m, time in rows) into an
+# (H·m) × T_eff matrix, time in columns. For variable k the rows (k-1)H+1 : kH hold
+# leads h = 0,…,H-1, i.e. out[(k-1)H + h, t] = V[t + (h-1), k]. Stacking the final
+# lead costs the last H-1 rows, so T_eff = T - (H - 1). (docs/technical.md §3.2.)
+function _stack_leads(V::AbstractMatrix{T}, H::Int) where {T<:AbstractFloat}
+    n, m = size(V)
+    T_eff = n - (H - 1)
+    out = Matrix{T}(undef, H * m, T_eff)
+    for k in 1:m, h in 1:H
+        @views out[(k - 1) * H + h, :] .= V[h:(h + T_eff - 1), k]
+    end
+    return out
+end
+
+# Residualize every row of V (vars × T_eff) on the controls in Xc (T_eff × Nx) using
+# the FWL annihilator M_X (eq. A.1). With the thin QR factor Q of Xc (orthonormal
+# columns spanning the controls), V M_X = V - (V Q) Q'. M_X is never formed.
+_residualize_on(V::AbstractMatrix{T}, Q::AbstractMatrix{T}) where {T<:AbstractFloat} =
+    V .- (V * Q) * Q'
+
+# Restriction matrix R = I_K ⊗ vec(I_H) ∈ ℝ^{KH² × K} (docs/technical.md, notation).
+# It encodes the constraint that the same β applies at every horizon h = 0,…,H-1.
+function _restriction_matrix(::Type{T}, K::Int, H::Int) where {T<:AbstractFloat}
+    return kron(Matrix{T}(I, K, K), vec(Matrix{T}(I, H, H)))
+end
+
+# ---------------------------------------------------------------------------
+# Estimator
+# ---------------------------------------------------------------------------
+
+"""
+    spiv(y, Y, X, Z; H, weak_iv = :AR, ξ = 0.10, grid_length = 30)
+
+System Projections IV estimator (Lewis & Mertens 2024), local-projections variant.
+
+Inputs use the **time-in-rows** convention (`T` periods down the rows):
+
+- `y` — outcome, length-`T` vector.
+- `Y` — `T × K` endogenous regressors.
+- `X` — `T × Nx` controls (e.g. lagged variables); residualized out via FWL.
+- `Z` — `T × Nz` instruments.
+
+`H` is the projection horizon (number of leads, `h = 0,…,H-1`). Returns an
+`SPIVResult{Float64, SPIVwithLP}` with the point estimate `β̂` (eq. 9), the
+strong-identification sandwich variance (eqs. 18–19), and the structural residuals.
+
+The weak-IV / robust-inference / IRF blocks are NaN stubs at this phase; `weak_iv`,
+`ξ`, and `grid_length` are accepted to keep the public signature stable but are only
+consumed once Phases 3–4 populate those blocks.
+"""
+function spiv(y::AbstractVector{<:Real}, Y::AbstractMatrix{<:Real},
+              X::AbstractMatrix{<:Real}, Z::AbstractMatrix{<:Real};
+              H::Int, weak_iv::Symbol = :AR, ξ::Real = 0.10, grid_length::Int = 30)
+    # --- promote to a common float type -----------------------------------
+    yv = collect(Float64, y)
+    Ym = Matrix{Float64}(Y)
+    Xm = Matrix{Float64}(X)
+    Zm = Matrix{Float64}(Z)
+
+    T = length(yv)
+    K = size(Ym, 2)
+    Nx = size(Xm, 2)
+    Nz = size(Zm, 2)
+
+    # --- validation -------------------------------------------------------
+    H ≥ 1 || throw(ArgumentError("H must be ≥ 1, got $H"))
+    size(Ym, 1) == T || throw(DimensionMismatch("Y must have T = $T rows, got $(size(Ym, 1))"))
+    size(Xm, 1) == T || throw(DimensionMismatch("X must have T = $T rows, got $(size(Xm, 1))"))
+    size(Zm, 1) == T || throw(DimensionMismatch("Z must have T = $T rows, got $(size(Zm, 1))"))
+    T_eff = T - (H - 1)
+    T_eff > 0 || throw(ArgumentError("horizon H = $H leaves no observations (T = $T)"))
+    H * Nz ≥ K || throw(ArgumentError("order condition violated: H·Nz = $(H*Nz) < K = $K (docs/technical.md §3.4)"))
+    T_eff - Nx - K > 0 ||
+        throw(ArgumentError("insufficient degrees of freedom: T_eff - Nx - K = $(T_eff - Nx - K) ≤ 0"))
+
+    # --- stacked future paths, trimmed instruments/controls (§3.2) --------
+    y_H = _stack_leads(reshape(yv, T, 1), H)   # H  × T_eff
+    Y_H = _stack_leads(Ym, H)                  # HK × T_eff
+    Zc = permutedims(@view Zm[1:T_eff, :])     # Nz × T_eff
+    Xc = Xm[1:T_eff, :]                        # T_eff × Nx
+
+    # --- FWL residualization on controls (eq. A.1) ------------------------
+    # Thin QR factor of the controls; Q's columns are an orthonormal basis for X.
+    Q = Nx == 0 ? Matrix{Float64}(undef, T_eff, 0) : Matrix(qr(Xc).Q)[:, 1:Nx]
+    y_perp = _residualize_on(y_H, Q)           # H  × T_eff
+    Y_perp = _residualize_on(Y_H, Q)           # HK × T_eff
+    Z_perp = _residualize_on(Zc, Q)            # Nz × T_eff
+
+    # --- Gram matrices via P_Z⊥ (§3.2) ------------------------------------
+    # Y⊥ P_Z⊥ Y⊥' = (Y⊥ Z⊥')(Z⊥ Z⊥')⁻¹(Z⊥ Y⊥'); the T_eff × T_eff projection is
+    # never formed.
+    Czz = Symmetric(Z_perp * Z_perp')          # Nz × Nz
+    Cyz = Y_perp * Z_perp'                      # HK × Nz
+    cyz = y_perp * Z_perp'                      # H  × Nz
+    W = Czz \ Cyz'                              # Nz × HK
+    YPY = Cyz * W                               # HK × HK  (Y⊥ P_Z⊥ Y⊥')
+    yPY = cyz * W                               # H  × HK  (y⊥ P_Z⊥ Y⊥')
+
+    # --- closed-form β̂ (eq. 9) -------------------------------------------
+    IH = Matrix{Float64}(I, H, H)
+    R = _restriction_matrix(Float64, K, H)     # KH² × K
+    KYPY = kron(YPY, IH)                        # H²K × H²K  (YPY ⊗ I_H)
+    A9 = Symmetric(R' * KYPY * R)              # K × K
+    β = A9 \ (R' * vec(yPY))                    # K
+
+    # --- structural residuals and Σ̂ (eq. 19) ----------------------------
+    û = y_perp - kron(β', IH) * Y_perp         # H × T_eff
+    Σ = Symmetric((û * û') ./ (T_eff - Nx - K))  # H × H
+
+    # --- feasible sandwich variance (eqs. 18 + §5.4 plug-in) -------------
+    # Var(β̂) = (1/T) A⁻¹ [R'(G ⊗ Σ̂) R] A⁻¹, with G = YPY/T = Θ̂_Y Θ̂_Y' and
+    # A = R'(G ⊗ I_H) R = A9 / T.
+    A = A9 ./ T_eff
+    M = Symmetric(R' * kron(YPY ./ T_eff, Σ) * R)  # K × K
+    Ainv = inv(A)
+    vβ = Ainv * M * Ainv
+    vcov = Matrix(Symmetric(vβ ./ T_eff))      # K × K, symmetrized
+
+    return SPIVResult(SPIVwithLP(), β, vcov, û; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
+end
