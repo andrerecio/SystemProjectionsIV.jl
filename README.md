@@ -10,7 +10,7 @@ The package is not registered. Install directly from the repository:
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/gragusa/SystemProjectionsIV.jl")
+Pkg.add(url = "https://github.com/andrerecio/SystemProjectionsIV.jl")
 ```
 
 ## Quick start
