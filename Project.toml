@@ -5,16 +5,8 @@ version = "0.0.1"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-LocalProjections = "42571009-22de-48df-b2d5-611d176495e8"
-MacroEconometricTools = "2e43262a-a6f8-4608-970d-a51fb3dfc6a7"
-Regress = "0ccf13ad-a1f2-44b4-972b-15ef40764d74"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-
-[sources]
-LocalProjections = {url = "https://github.com/gragusa/LocalProjections.jl", rev = "main"}
-MacroEconometricTools = {url = "https://github.com/gragusa/MacroEconometricTools.jl", rev = "main"}
-Regress = {url = "https://github.com/gragusa/Regress.jl", rev = "main"}
 
 [compat]
 LinearAlgebra = "1.11"

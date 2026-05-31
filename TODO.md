@@ -6,6 +6,22 @@ References throughout this file point at `docs/technical.md` (Lewis & Mertens 20
 
 ---
 
+## Dependency policy change (2026-05-31)
+
+Dropped the three gragusa git dependencies (`MacroEconometricTools`, `LocalProjections`, `Regress`) and the `[sources]` block. Their full sources are now vendored as reference material under `docs/ext/gragusa/`; we reimplement only the functions SP-IV needs directly in `src/`, taking inspiration from gragusa's OLS/IV style — **with a source citation on any adapted code** (see `CLAUDE.md` → Dependencies). HAC standard errors will come from the registered `CovarianceMatrices.jl`, added in Phase 4. Each estimator is reimplemented in the phase that first needs it, not up front.
+
+Surgery step (today):
+
+- [x] Remove the three git deps and `[sources]` from `Project.toml`; runtime deps are now `LinearAlgebra`, `StatsBase`, `StatsFuns`.
+- [x] Drop the three `using` lines from `src/SystemProjectionsIV.jl`.
+- [x] Trim `src/utilities.jl` to the working lag/matrix/companion utilities + a gragusa citation header; delete the dead `VARModel`-dependent functions (no upstream type to dispatch on). File stays un-`include`d until Phase 5.
+- [x] Simplify the Aqua call to `Aqua.test_all(SystemProjectionsIV)` (no more git deps to ignore).
+- [x] Update `CLAUDE.md` (Dependencies, layout, Tooling & CI) and this file.
+
+**Exit criteria:** `using SystemProjectionsIV` loads with no git fetches; `Pkg.test()` green (existing 92 tests + Aqua, including stale-deps/compat checks); no reference to the three git deps remains outside `docs/ext/` and intended citation comments.
+
+---
+
 ## Phase 0 — Package skeleton ✅
 
 Goal: a valid, installable, testable Julia package with the planned dependencies wired up.
@@ -83,7 +99,7 @@ Goal: weak-IV diagnostic plus robust AR and KLM confidence sets.
 Goal: outcome and endogenous IRFs with HAC bands populated in `SPIVResult`.
 
 - [ ] Compute outcome IRF (`H × Nz`) and endogenous IRF (`H · K × Nz`) from the residualised projections.
-- [ ] Newey–West HAC SEs per horizon `h` with lag truncation `h - 1`. Prefer `Regress.jl`'s HAC implementation if it exposes one; otherwise implement directly.
+- [ ] Newey–West HAC SEs per horizon `h` with lag truncation `h - 1`. Use the registered `CovarianceMatrices.jl` (add it to `Project.toml` `[deps]` + `[compat]` here, the phase that first imports it); otherwise implement directly, cited from `docs/ext/gragusa/CovarianceMatrices.jl`.
 - [ ] Populate `result.irf.outcome` and `result.irf.endogenous` with point, SE, 95% lower / upper bounds.
 - [ ] Tests:
   - HAC SE reduces to OLS SE when residuals are iid (closed-form check on a designed input).
@@ -98,11 +114,11 @@ Goal: outcome and endogenous IRFs with HAC bands populated in `SPIVResult`.
 
 Goal: ship.
 
-- [ ] `SPIVwithVAR` variant: compute forecast errors `X̂_t^⊥(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j}` using `MacroEconometricTools.jl`'s VAR estimator (appendix A of `docs/technical.md`).
+- [ ] `SPIVwithVAR` variant: compute forecast errors `X̂_t^⊥(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j}` using an internal VAR estimator reimplemented (and cited) from `docs/ext/gragusa/MacroEconometricsTools.jl` (appendix A of `docs/technical.md`).
 - [ ] Dispatch: `spiv(y, Y, X, Z, ::SPIVwithVAR; ...)` returns an `SPIVResult` with the same shape as the LP variant.
 - [ ] `Base.show(io, ::SPIVResult)` and a `summary(::SPIVResult)` method printing a clean table.
 - [ ] Plotting recipe for IRFs (Plots.jl recipe via `RecipesBase`, to avoid pulling Plots into the main dependency tree).
-- [ ] Audit `src/utilities.jl`: remove any function now supplied by `MacroEconometricTools.jl`; keep what isn't.
+- [ ] Finish `src/utilities.jl`: the dead `VARModel`-dependent functions were already trimmed in the 2026-05-31 surgery (lag/matrix/companion utilities retained, cited). Here, `include` it and wire the retained utilities into the VAR variant.
 - [ ] Doctests in the README quick-start and the `spiv` docstring.
 - [ ] Tag `v0.1.0`.
 
