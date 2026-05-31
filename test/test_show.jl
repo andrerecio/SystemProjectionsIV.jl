@@ -17,6 +17,7 @@ function _dgp_show(T, H, β, seed)
     u = 0.3 .* randn(T)
     Y = zeros(T)
     for t in 1:T, j in 0:(H - 1)
+
         t - j ≥ 1 && (Y[t] += 0.8^j * ε[t - j])
     end
     Y .+= 0.7 .* u .+ 0.2 .* randn(T)
@@ -76,15 +77,15 @@ end
         y, Y, Z = _dgp_show(300, 3, 0.5, 2)
         res = spiv(y, Y, ones(300, 1), Z; H = 3)
 
-        so = RecipesBase.apply_recipe(Dict{Symbol,Any}(), res)
-        se = RecipesBase.apply_recipe(Dict{Symbol,Any}(:response => :endogenous), res)
+        so = RecipesBase.apply_recipe(Dict{Symbol, Any}(), res)
+        se = RecipesBase.apply_recipe(Dict{Symbol, Any}(:response => :endogenous), res)
         @test length(so) ≥ 1
         @test length(se) ≥ 1
         # the point-IRF series carries the horizon axis 0:H-1
         @test any(s -> s.args[1] == 0:2, so)
         @test_throws ArgumentError RecipesBase.apply_recipe(
-            Dict{Symbol,Any}(:response => :bogus),
-            res,
+            Dict{Symbol, Any}(:response => :bogus),
+            res
         )
     end
 
@@ -98,13 +99,14 @@ end
         u = 0.3 .* randn(T)
         Y = zeros(T)
         for t in 1:T, j in 0:3
+
             t - j ≥ 1 && (Y[t] += 0.8^j * ε[t - j])
         end
         Y .+= 0.7 .* u .+ 0.2 .* randn(T)
         y = β .* Y .+ u
 
-        result =
-            spiv(y, reshape(Y, T, 1), ones(T, 1), reshape(ε, T, 1); H = H, weak_iv = :AR)
+        result = spiv(
+            y, reshape(Y, T, 1), ones(T, 1), reshape(ε, T, 1); H = H, weak_iv = :AR)
 
         @test isfinite(coef(result)[1])
         @test coef(result)[1] ≈ β atol = 0.1

@@ -31,13 +31,13 @@ end
 # sandwich (X'X)⁻¹ · meat · (X'X)⁻¹ with `meat` the unscaled kernel sum of the moment
 # matrix X .* e (e the regression residual) — docs/technical.md §3.3 / §5.4.
 function _irf_row_se(
-    X::AbstractMatrix{T},
-    yrow::AbstractVector{T},
-    b::AbstractVector{T},
-    XtXinv::AbstractMatrix{T},
-    bw::Int,
-    hac::Symbol,
-) where {T<:AbstractFloat}
+        X::AbstractMatrix{T},
+        yrow::AbstractVector{T},
+        b::AbstractVector{T},
+        XtXinv::AbstractMatrix{T},
+        bw::Int,
+        hac::Symbol
+) where {T <: AbstractFloat}
     e = yrow .- X * b
     mm = X .* e                                        # T_eff × Nz moment matrix
     meat = aVar(_hac_kernel(hac, bw), mm; demean = false, scale = false)
@@ -47,17 +47,17 @@ end
 
 # Outcome (H × Nz) and endogenous (H × K × Nz) IRF blocks with HAC bands at level 1 − α.
 function _irf_blocks(
-    y_perp::AbstractMatrix{T},
-    Y_perp::AbstractMatrix{T},
-    Z_perp::AbstractMatrix{T},
-    Czz::AbstractMatrix{T},
-    H::Int,
-    K::Int,
-    Nz::Int,
-    T_eff::Int,
-    α::Real,
-    hac::Symbol,
-) where {T<:AbstractFloat}
+        y_perp::AbstractMatrix{T},
+        Y_perp::AbstractMatrix{T},
+        Z_perp::AbstractMatrix{T},
+        Czz::AbstractMatrix{T},
+        H::Int,
+        K::Int,
+        Nz::Int,
+        T_eff::Int,
+        α::Real,
+        hac::Symbol
+) where {T <: AbstractFloat}
     iZ = inv(sqrt(Symmetric(Czz ./ T_eff)))            # (Z⊥Z⊥'/T)^{-1/2}, Nz × Nz
     X = permutedims(iZ * Z_perp)                       # standardised instruments, T_eff × Nz
     XtXinv = inv(Symmetric(X' * X))                    # (= I_Nz / T_eff by construction)
@@ -74,9 +74,10 @@ function _irf_blocks(
     outcome = IRFBlock(Θy, se_y, Θy .- z .* se_y, Θy .+ z .* se_y)
 
     # Endogenous block reshaped to H × K × Nz: row (k-1)H+h ↔ variable k, horizon h-1.
-    pt = Array{T,3}(undef, H, K, Nz)
-    se = Array{T,3}(undef, H, K, Nz)
+    pt = Array{T, 3}(undef, H, K, Nz)
+    se = Array{T, 3}(undef, H, K, Nz)
     for k in 1:K, h in 1:H
+
         r = (k - 1) * H + h
         b = ΘY[r, :]
         pt[h, k, :] .= b

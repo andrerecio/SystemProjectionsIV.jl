@@ -18,7 +18,7 @@ function Base.show(io::IO, r::SPIVResult)
         r.Nz,
         ", T_eff=",
         r.T_eff,
-        ")",
+        ")"
     )
 end
 
@@ -41,41 +41,35 @@ function Base.show(io::IO, ::MIME"text/plain", r::SPIVResult)
         " instruments, Nx=",
         r.Nx,
         " controls, T_eff=",
-        r.T_eff,
+        r.T_eff
     )
     println(io)
     println(io, "Coefficients (strong-identification sandwich):")
-    @printf(
-        io,
+    @printf(io,
         "  %-8s %10s %10s %9s   %s\n",
         "param",
         "estimate",
         "std.err.",
         "z",
-        "95% CI"
-    )
+        "95% CI")
     for k in 1:r.K
         zk = se[k] > 0 ? β[k] / se[k] : NaN
-        @printf(
-            io,
+        @printf(io,
             "  β[%-3d] %12.4f %10.4f %9.2f   [%.4f, %.4f]\n",
             k,
             β[k],
             se[k],
             zk,
             ci[k, 1],
-            ci[k, 2],
-        )
+            ci[k, 2],)
     end
     println(io)
     verdict = wk.is_weak ? "weak" : "strong"
-    @printf(
-        io,
+    @printf(io,
         "Weak-IV (g): %.3f   critical value: %.3f   ⇒ instruments %s\n",
         wk.g_min,
         wk.critical_value,
-        verdict,
-    )
+        verdict,)
     if rb.method === :none || isempty(rb.confidence_set)
         @printf(io, "Robust (%s): empty confidence set\n", String(rb.method))
     else
@@ -91,6 +85,6 @@ function Base.show(io::IO, ::MIME"text/plain", r::SPIVResult)
         size(r.irf_outcome.point),
         ", endogenous ",
         size(r.irf_endogenous.point),
-        " (point/se/lower/upper in result.irf_*)",
+        " (point/se/lower/upper in result.irf_*)"
     )
 end

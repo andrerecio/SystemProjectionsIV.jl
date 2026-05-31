@@ -3,7 +3,6 @@ using SystemProjectionsIV
 using StatsBase
 
 @testset "types" begin
-
     @testset "spec hierarchy" begin
         @test SPIVwithLP <: AbstractSPIVSpec
         @test SPIVwithVAR <: AbstractSPIVSpec
@@ -32,7 +31,7 @@ using StatsBase
             Z_perp;
             H = H,
             K = K,
-            Nz = Nz,
+            Nz = Nz
         )
         @test_throws DimensionMismatch ForecastErrors(
             y_perp,
@@ -40,7 +39,7 @@ using StatsBase
             Z_perp;
             H = H,
             K = K,
-            Nz = Nz,
+            Nz = Nz
         )
         @test_throws DimensionMismatch ForecastErrors(
             y_perp,
@@ -48,7 +47,7 @@ using StatsBase
             randn(Nz + 1, T_eff);
             H = H,
             K = K,
-            Nz = Nz,
+            Nz = Nz
         )
     end
 
@@ -75,7 +74,7 @@ using StatsBase
         # Direct construction (N = 2)
         H, Nz = 6, 2
         b = IRFBlock(randn(H, Nz), randn(H, Nz), randn(H, Nz), randn(H, Nz))
-        @test b isa IRFBlock{Float64,2}
+        @test b isa IRFBlock{Float64, 2}
         @test size(b.point) == (H, Nz)
 
         # Shape mismatch
@@ -83,13 +82,13 @@ using StatsBase
             randn(H, Nz),
             randn(H + 1, Nz),
             randn(H, Nz),
-            randn(H, Nz),
+            randn(H, Nz)
         )
 
         # NaN-filled stub (N = 3)
         K = 4
         b3 = IRFBlock{Float64}(H, K, Nz)
-        @test b3 isa IRFBlock{Float64,3}
+        @test b3 isa IRFBlock{Float64, 3}
         @test size(b3.point) == (H, K, Nz)
         @test all(isnan, b3.point)
         @test all(isnan, b3.se)
@@ -107,15 +106,15 @@ using StatsBase
 
         r = SPIVResult(SPIVwithLP(), β, V, u; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
 
-        @test r isa SPIVResult{Float64,SPIVwithLP}
+        @test r isa SPIVResult{Float64, SPIVwithLP}
         @test r.β == β
         @test r.vcov == V
         @test r.residuals == u
         @test (r.H, r.K, r.Nz, r.Nx, r.T_eff) == (H, K, Nz, Nx, T_eff)
         @test r.weak_iv isa WeakIVDiagnostic{Float64}
         @test r.robust isa RobustInference{Float64}
-        @test r.irf_outcome isa IRFBlock{Float64,2}
-        @test r.irf_endogenous isa IRFBlock{Float64,3}
+        @test r.irf_outcome isa IRFBlock{Float64, 2}
+        @test r.irf_endogenous isa IRFBlock{Float64, 3}
         @test size(r.irf_outcome.point) == (H, Nz)
         @test size(r.irf_endogenous.point) == (H, K, Nz)
         @test all(isnan, r.irf_outcome.point)
@@ -131,9 +130,9 @@ using StatsBase
             K = K,
             Nz = Nz,
             Nx = Nx,
-            T_eff = T_eff,
+            T_eff = T_eff
         )
-        @test r_var isa SPIVResult{Float64,SPIVwithVAR}
+        @test r_var isa SPIVResult{Float64, SPIVwithVAR}
 
         # Dimension validation
         @test_throws DimensionMismatch SPIVResult(
@@ -145,7 +144,7 @@ using StatsBase
             K = K,
             Nz = Nz,
             Nx = Nx,
-            T_eff = T_eff,
+            T_eff = T_eff
         )
         @test_throws DimensionMismatch SPIVResult(
             SPIVwithLP(),
@@ -156,7 +155,7 @@ using StatsBase
             K = K,
             Nz = Nz,
             Nx = Nx,
-            T_eff = T_eff,
+            T_eff = T_eff
         )
         @test_throws DimensionMismatch SPIVResult(
             SPIVwithLP(),
@@ -167,7 +166,7 @@ using StatsBase
             K = K,
             Nz = Nz,
             Nx = Nx,
-            T_eff = T_eff,
+            T_eff = T_eff
         )
     end
 
@@ -222,5 +221,4 @@ using StatsBase
         @test @inferred(spec(r)) === r.spec
         @test @inferred(confint(r; level = 0.95)) isa Matrix{Float64}
     end
-
 end

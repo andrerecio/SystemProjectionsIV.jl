@@ -70,6 +70,7 @@ end
         Sy = zeros(H * Nz)
         r = 0
         for h in 1:H, n in 1:Nz
+
             r += 1
             for k in 1:K
                 SY[r, k] = ΘY[(k - 1) * H + h, n]
@@ -100,11 +101,9 @@ end
 
         for h in 1:H
             bo = res.irf_outcome.point[h, :]
-            @test res.irf_outcome.se[h, :] ≈ _hac_explicit(X, vec(y_H[h, :]), bo, h) rtol =
-                1e-8
+            @test res.irf_outcome.se[h, :] ≈ _hac_explicit(X, vec(y_H[h, :]), bo, h) rtol = 1e-8
             be = res.irf_endogenous.point[h, 1, :]
-            @test res.irf_endogenous.se[h, 1, :] ≈ _hac_explicit(X, vec(Y_H[h, :]), be, h) rtol =
-                1e-8
+            @test res.irf_endogenous.se[h, 1, :] ≈ _hac_explicit(X, vec(Y_H[h, :]), be, h) rtol = 1e-8
         end
 
         # Horizon 0 ⇒ White/HC0 (Γ₀-only) standard error.
@@ -151,11 +150,11 @@ end
         yv = 0.4 .* vec(Yv) .+ randn(T)
 
         y_H, Y_H, Z_p, Czz, T_eff = _resid_irf(yv, Yv, Zv, H)
-        out =
-            @inferred _irf_blocks(y_H, Y_H, Z_p, Matrix(Czz), H, 1, 1, T_eff, 0.05, :fixed)
+        out = @inferred _irf_blocks(
+            y_H, Y_H, Z_p, Matrix(Czz), H, 1, 1, T_eff, 0.05, :fixed)
         @test out isa Tuple{
-            SystemProjectionsIV.IRFBlock{Float64,2},
-            SystemProjectionsIV.IRFBlock{Float64,3},
+            SystemProjectionsIV.IRFBlock{Float64, 2},
+            SystemProjectionsIV.IRFBlock{Float64, 3}
         }
     end
 end

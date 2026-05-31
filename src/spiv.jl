@@ -19,11 +19,12 @@
 # (H·m) × T_eff matrix, time in columns. For variable k the rows (k-1)H+1 : kH hold
 # leads h = 0,…,H-1, i.e. out[(k-1)H + h, t] = V[t + (h-1), k]. Stacking the final
 # lead costs the last H-1 rows, so T_eff = T - (H - 1). (docs/technical.md §3.2.)
-function _stack_leads(V::AbstractMatrix{T}, H::Int) where {T<:AbstractFloat}
+function _stack_leads(V::AbstractMatrix{T}, H::Int) where {T <: AbstractFloat}
     n, m = size(V)
     T_eff = n - (H - 1)
     out = Matrix{T}(undef, H * m, T_eff)
     for k in 1:m, h in 1:H
+
         @views out[(k - 1) * H + h, :] .= V[h:(h + T_eff - 1), k]
     end
     return out
@@ -32,12 +33,14 @@ end
 # Residualize every row of V (vars × T_eff) on the controls in Xc (T_eff × Nx) using
 # the FWL annihilator M_X (eq. A.1). With the thin QR factor Q of Xc (orthonormal
 # columns spanning the controls), V M_X = V - (V Q) Q'. M_X is never formed.
-_residualize_on(V::AbstractMatrix{T}, Q::AbstractMatrix{T}) where {T<:AbstractFloat} =
+function _residualize_on(V::AbstractMatrix{T}, Q::AbstractMatrix{T}) where {T <:
+                                                                            AbstractFloat}
     V .- (V * Q) * Q'
+end
 
 # Restriction matrix R = I_K ⊗ vec(I_H) ∈ ℝ^{KH² × K} (docs/technical.md, notation).
 # It encodes the constraint that the same β applies at every horizon h = 0,…,H-1.
-function _restriction_matrix(::Type{T}, K::Int, H::Int) where {T<:AbstractFloat}
+function _restriction_matrix(::Type{T}, K::Int, H::Int) where {T <: AbstractFloat}
     return kron(Matrix{T}(I, K, K), vec(Matrix{T}(I, H, H)))
 end
 
@@ -79,17 +82,17 @@ HAC standard errors and `1 − α` normal bands, are in `result.irf_outcome` /
 `result.irf_endogenous` (docs/technical.md §3.3, eq. 11).
 """
 function spiv(
-    y::AbstractVector{<:Real},
-    Y::AbstractMatrix{<:Real},
-    X::AbstractMatrix{<:Real},
-    Z::AbstractMatrix{<:Real};
-    H::Int,
-    weak_iv::Symbol = :AR,
-    α::Real = 0.05,
-    ξ::Real = 0.10,
-    grid_length::Int = 30,
-    grid_scale::Real = 10,
-    hac::Symbol = :fixed,
+        y::AbstractVector{<:Real},
+        Y::AbstractMatrix{<:Real},
+        X::AbstractMatrix{<:Real},
+        Z::AbstractMatrix{<:Real};
+        H::Int,
+        weak_iv::Symbol = :AR,
+        α::Real = 0.05,
+        ξ::Real = 0.10,
+        grid_length::Int = 30,
+        grid_scale::Real = 10,
+        hac::Symbol = :fixed
 )
     # --- promote to a common float type -----------------------------------
     yv = collect(Float64, y)
@@ -116,18 +119,18 @@ function spiv(
     T_eff > 0 || throw(ArgumentError("horizon H = $H leaves no observations (T = $T)"))
     H * Nz ≥ K || throw(
         ArgumentError(
-            "order condition violated: H·Nz = $(H*Nz) < K = $K (docs/technical.md §3.4)",
-        ),
+        "order condition violated: H·Nz = $(H*Nz) < K = $K (docs/technical.md §3.4)",
+    ),
     )
     T_eff - Nx - K > 0 || throw(
         ArgumentError(
-            "insufficient degrees of freedom: T_eff - Nx - K = $(T_eff - Nx - K) ≤ 0",
-        ),
+        "insufficient degrees of freedom: T_eff - Nx - K = $(T_eff - Nx - K) ≤ 0",
+    ),
     )
     T_eff - Nx - Nz > 0 || throw(
         ArgumentError(
-            "insufficient degrees of freedom for Ŵ₂: T_eff - Nx - Nz = $(T_eff - Nx - Nz) ≤ 0",
-        ),
+        "insufficient degrees of freedom for Ŵ₂: T_eff - Nx - Nz = $(T_eff - Nx - Nz) ≤ 0",
+    ),
     )
 
     # --- stacked future paths, trimmed instruments/controls (§3.2) --------
@@ -194,14 +197,15 @@ function spiv(
         T_eff,
         α,
         grid_length,
-        grid_scale,
+        grid_scale
     )
 
     # --- impulse responses with HAC standard errors (docs/technical.md §3.3) ---
-    irf_outcome, irf_endogenous =
-        _irf_blocks(y_perp, Y_perp, Z_perp, collect(Czz), H, K, Nz, T_eff, α, hac)
+    irf_outcome,
+    irf_endogenous = _irf_blocks(
+        y_perp, Y_perp, Z_perp, collect(Czz), H, K, Nz, T_eff, α, hac)
 
-    return SPIVResult{Float64,SPIVwithLP}(
+    return SPIVResult{Float64, SPIVwithLP}(
         SPIVwithLP(),
         β,
         vcov,
@@ -214,6 +218,6 @@ function spiv(
         K,
         Nz,
         Nx,
-        T_eff,
+        T_eff
     )
 end

@@ -19,13 +19,13 @@
 # v̂⊥_H = Ŷ⊥_H − Π̂ Ẑ⊥ are the first-stage residuals (Y⊥ regressed on Z⊥, i.e. Y⊥ M_Z⊥),
 # with covariance Ŵ₂ = v̂⊥_H v̂⊥_H' / (T_eff − Nx − Nz). Returns (v_res, Ŵ₂).
 function _first_stage_resid_cov(
-    Y_perp::AbstractMatrix{T},
-    Z_perp::AbstractMatrix{T},
-    Czz::AbstractMatrix{T},
-    T_eff::Int,
-    Nx::Int,
-    Nz::Int,
-) where {T<:AbstractFloat}
+        Y_perp::AbstractMatrix{T},
+        Z_perp::AbstractMatrix{T},
+        Czz::AbstractMatrix{T},
+        T_eff::Int,
+        Nx::Int,
+        Nz::Int
+) where {T <: AbstractFloat}
     fitted = (Y_perp * Z_perp') * (Czz \ Z_perp)      # Π̂ Ẑ⊥ = Y⊥ P_Z⊥, HK × T_eff
     v_res = Y_perp .- fitted                           # HK × T_eff
     W2 = (v_res * v_res') ./ (T_eff - Nx - Nz)         # HK × HK
@@ -45,14 +45,14 @@ end
 # concentration-matrix form R'(Y⊥ P_Z⊥ Y⊥' ⊗ I_H)R (Definition 1, §6.3); this is the
 # object the asymptotic limit in Prop. 7 is stated for. Implemented as such below.
 function _weak_iv_diagnostic(
-    YPY::AbstractMatrix{T},
-    W2::AbstractMatrix{T},
-    R::AbstractMatrix{T},
-    H::Int,
-    Nz::Int,
-    ξ::Real,
-    α::Real,
-) where {T<:AbstractFloat}
+        YPY::AbstractMatrix{T},
+        W2::AbstractMatrix{T},
+        R::AbstractMatrix{T},
+        H::Int,
+        Nz::Int,
+        ξ::Real,
+        α::Real
+) where {T <: AbstractFloat}
     IH = Matrix{T}(I, H, H)
 
     Φ = Symmetric(R' * kron(W2, IH) * R)               # Φ̂ = R'(Ŵ₂ ⊗ I_H)R, K × K
@@ -85,19 +85,20 @@ end
 # ---------------------------------------------------------------------------
 
 # Structural residuals under H₀: b = β  ⇒  u⊥_H(b) = y⊥_H − (b' ⊗ I_H) Y⊥_H (H × T_eff).
-_resid_at(b, y_perp, Y_perp, H) =
+function _resid_at(b, y_perp, Y_perp, H)
     y_perp .- kron(b', Matrix{eltype(y_perp)}(I, H, H)) * Y_perp
+end
 
 # Anderson–Rubin statistic, eq. (20). d_AR = N_z + N_x.
 function _ar_stat(
-    b::AbstractVector{T},
-    y_perp::AbstractMatrix{T},
-    Y_perp::AbstractMatrix{T},
-    Z_perp::AbstractMatrix{T},
-    Czz::AbstractMatrix{T},
-    T_eff::Int,
-    d_AR::Int,
-) where {T<:AbstractFloat}
+        b::AbstractVector{T},
+        y_perp::AbstractMatrix{T},
+        Y_perp::AbstractMatrix{T},
+        Z_perp::AbstractMatrix{T},
+        Czz::AbstractMatrix{T},
+        T_eff::Int,
+        d_AR::Int
+) where {T <: AbstractFloat}
     H = size(y_perp, 1)
     u = _resid_at(b, y_perp, Y_perp, H)                # H × T_eff
     uZ = u * Z_perp'                                    # H × Nz
@@ -109,16 +110,16 @@ end
 # Kleibergen KLM statistic, eq. (21). d_K = N_z + N_x. Ported from the reference
 # implementation; the implicit P_Z⊥ / M_Z⊥ forms replace the explicit T×T matrices.
 function _klm_stat(
-    b::AbstractVector{T},
-    y_perp::AbstractMatrix{T},
-    Y_perp::AbstractMatrix{T},
-    v_res::AbstractMatrix{T},
-    Z_perp::AbstractMatrix{T},
-    Czz::AbstractMatrix{T},
-    R::AbstractMatrix{T},
-    T_eff::Int,
-    d_K::Int,
-) where {T<:AbstractFloat}
+        b::AbstractVector{T},
+        y_perp::AbstractMatrix{T},
+        Y_perp::AbstractMatrix{T},
+        v_res::AbstractMatrix{T},
+        Z_perp::AbstractMatrix{T},
+        Czz::AbstractMatrix{T},
+        R::AbstractMatrix{T},
+        T_eff::Int,
+        d_K::Int
+) where {T <: AbstractFloat}
     H = size(y_perp, 1)
     u = _resid_at(b, y_perp, Y_perp, H)                # H × T_eff
 
@@ -148,24 +149,24 @@ end
 # point is accepted when its statistic is below the χ² critical value (df = H·Nz for
 # AR, K for KLM at level 1−α). `bounds` are per-parameter min/max over accepted points.
 function _robust_inference(
-    method::Symbol,
-    β::AbstractVector{T},
-    se::AbstractVector{T},
-    y_perp::AbstractMatrix{T},
-    Y_perp::AbstractMatrix{T},
-    v_res::AbstractMatrix{T},
-    Z_perp::AbstractMatrix{T},
-    Czz::AbstractMatrix{T},
-    R::AbstractMatrix{T},
-    H::Int,
-    K::Int,
-    Nz::Int,
-    Nx::Int,
-    T_eff::Int,
-    α::Real,
-    grid_length::Int,
-    grid_scale::Real,
-) where {T<:AbstractFloat}
+        method::Symbol,
+        β::AbstractVector{T},
+        se::AbstractVector{T},
+        y_perp::AbstractMatrix{T},
+        Y_perp::AbstractMatrix{T},
+        v_res::AbstractMatrix{T},
+        Z_perp::AbstractMatrix{T},
+        Czz::AbstractMatrix{T},
+        R::AbstractMatrix{T},
+        H::Int,
+        K::Int,
+        Nz::Int,
+        Nx::Int,
+        T_eff::Int,
+        α::Real,
+        grid_length::Int,
+        grid_scale::Real
+) where {T <: AbstractFloat}
     d = Nz + Nx
     if method === :AR
         df = H * Nz
@@ -179,9 +180,8 @@ function _robust_inference(
         throw(ArgumentError("weak_iv must be :AR or :KLM, got :$method"))
     end
 
-    grids = [
-        range(β[k] - grid_scale * se[k], β[k] + grid_scale * se[k]; length = grid_length) for k in 1:K
-    ]
+    grids = [range(β[k] - grid_scale * se[k], β[k] + grid_scale * se[k]; length = grid_length)
+             for k in 1:K]
     pts = vec(collect(Iterators.product(grids...)))    # Vector of NTuple{K}
     accepted = Vector{Bool}(undef, length(pts))
     Threads.@threads for i in eachindex(pts)

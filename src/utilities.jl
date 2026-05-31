@@ -28,7 +28,7 @@ lag(x, 1)  # [NaN, 1, 2, 3, 4]
 lag(x, 2)  # [NaN, NaN, 1, 2, 3]
 ```
 """
-function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T<:AbstractFloat}
+function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T <: AbstractFloat}
     len = length(x)
     if n == 0
         return copy(x)
@@ -46,7 +46,7 @@ function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T<:AbstractF
     end
 end
 
-function lag(X::AbstractMatrix{T}, n::Int; default = T(NaN)) where {T<:AbstractFloat}
+function lag(X::AbstractMatrix{T}, n::Int; default = T(NaN)) where {T <: AbstractFloat}
     return hcat([lag(col, n; default = default) for col in eachcol(X)]...)
 end
 
@@ -62,7 +62,7 @@ Create matrix of lagged values for VAR estimation.
 # Returns
 - Matrix of size (T × (1 + n_vars * p)) with intercept and lags
 """
-function create_lags(X::AbstractMatrix{T}, p::Int) where {T<:AbstractFloat}
+function create_lags(X::AbstractMatrix{T}, p::Int) where {T <: AbstractFloat}
     n_obs, n_vars = size(X)
     n_cols = 1 + n_vars * p
 
@@ -95,10 +95,10 @@ In-place creation of lagged matrix for VAR estimation.
 - `include_intercept::Bool`: Whether to include intercept column
 """
 function create_lags!(
-    dest::AbstractMatrix{T},
-    X::AbstractMatrix{T},
-    p::Int,
-    include_intercept::Bool = true,
+        dest::AbstractMatrix{T},
+        X::AbstractMatrix{T},
+        p::Int,
+        include_intercept::Bool = true
 ) where {T}
     n_obs, n_vars = size(X)
     offset = include_intercept ? 1 : 0
@@ -215,7 +215,7 @@ Build companion form matrix from VAR lag coefficients.
 # Returns
 - `F::Matrix{T}`: Companion matrix (n_vars*n_lags × n_vars*n_lags)
 """
-function companion_form(A::Array{T,3}) where {T}
+function companion_form(A::Array{T, 3}) where {T}
     n_vars, _, n_lags = size(A)
     n = n_vars * n_lags
 

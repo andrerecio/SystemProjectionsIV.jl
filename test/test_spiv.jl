@@ -84,6 +84,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         Sy = zeros(H * Nz)
         r = 0
         for h in 1:H, n in 1:Nz
+
             r += 1
             for k in 1:K
                 SY[r, k] = ΘY[(k - 1) * H + h, n]
@@ -134,7 +135,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
             randn(T, 3),
             ones(T, 1),
             randn(T, 1);
-            H = 1,
+            H = 1
         )
         # row-count mismatch
         @test_throws DimensionMismatch spiv(
@@ -142,7 +143,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
             randn(T - 1, 1),
             ones(T, 1),
             randn(T, 1);
-            H = 2,
+            H = 2
         )
         # H too large for the sample
         @test_throws ArgumentError spiv(
@@ -150,7 +151,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
             randn(5, 1),
             ones(5, 1),
             randn(5, 1);
-            H = 6,
+            H = 6
         )
         # insufficient degrees of freedom
         @test_throws ArgumentError spiv(
@@ -158,7 +159,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
             randn(4, 1),
             ones(4, 3),
             randn(4, 1);
-            H = 1,
+            H = 1
         )
     end
 
@@ -177,7 +178,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         Xv = ones(T, 1)
 
         res = @inferred _runspiv(yv, Yv, Xv, Zv, H)
-        @test res isa SPIVResult{Float64,SPIVwithLP}
+        @test res isa SPIVResult{Float64, SPIVwithLP}
 
         # Phases 3–4 fill the weak-IV / robust / IRF blocks.
         wk = weak_iv_test(res)

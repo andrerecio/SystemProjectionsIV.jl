@@ -25,8 +25,8 @@
             end
             @series begin
                 subplot := n
-                ribbon :=
-                    (blk.point[:, n] .- blk.lower[:, n], blk.upper[:, n] .- blk.point[:, n])
+                ribbon := (
+                    blk.point[:, n] .- blk.lower[:, n], blk.upper[:, n] .- blk.point[:, n])
                 fillalpha --> 0.2
                 xguide --> "horizon"
                 h, blk.point[:, n]
@@ -38,6 +38,7 @@
         legend := false
         idx = 0
         for k in 1:r.K, n in 1:r.Nz
+
             idx += 1
             @series begin
                 subplot := idx
@@ -51,7 +52,7 @@
                 title := "Y$k ← shock $n"
                 ribbon := (
                     blk.point[:, k, n] .- blk.lower[:, k, n],
-                    blk.upper[:, k, n] .- blk.point[:, k, n],
+                    blk.upper[:, k, n] .- blk.point[:, k, n]
                 )
                 fillalpha --> 0.2
                 xguide --> "horizon"
