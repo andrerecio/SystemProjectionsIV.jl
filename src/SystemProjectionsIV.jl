@@ -1,10 +1,11 @@
 module SystemProjectionsIV
 
-using LinearAlgebra: diag, qr, Symmetric, I, inv, kron
+using LinearAlgebra: diag, qr, Symmetric, I, inv, kron, tr, eigvals, dot
 using StatsBase
-using StatsFuns: norminvcdf
+using StatsFuns: norminvcdf, chisqinvcdf
 
 include("types.jl")
+include("inference.jl")
 include("spiv.jl")
 
 export AbstractSPIVSpec, SPIVwithLP, SPIVwithVAR

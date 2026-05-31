@@ -179,10 +179,10 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         res = @inferred _runspiv(yv, Yv, Xv, Zv, H)
         @test res isa SPIVResult{Float64,SPIVwithLP}
 
-        # Phase 2 fills β/vcov/residuals; inference & IRF blocks stay NaN stubs.
+        # Phase 3 fills the weak-IV / robust blocks; IRF blocks stay NaN until Phase 4.
         wk = weak_iv_test(res)
-        @test isnan(wk.g_min) && wk.is_weak == false
-        @test robust_inference(res).method == :none
+        @test isfinite(wk.g_min)
+        @test robust_inference(res).method == :AR
         @test all(isnan, res.irf_outcome.point)
         @test all(isnan, res.irf_endogenous.point)
         @test nobs(res) == T - (H - 1)

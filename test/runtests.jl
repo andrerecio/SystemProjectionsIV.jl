@@ -13,4 +13,5 @@ using SystemProjectionsIV
 
     include("test_types.jl")
     include("test_spiv.jl")
+    include("test_inference.jl")
 end

@@ -46,7 +46,7 @@ end
 # ---------------------------------------------------------------------------
 
 """
-    spiv(y, Y, X, Z; H, weak_iv = :AR, ξ = 0.10, grid_length = 30)
+    spiv(y, Y, X, Z; H, weak_iv = :AR, α = 0.05, ξ = 0.10, grid_length = 30, grid_scale = 10)
 
 System Projections IV estimator (Lewis & Mertens 2024), local-projections variant.
 
@@ -59,11 +59,19 @@ Inputs use the **time-in-rows** convention (`T` periods down the rows):
 
 `H` is the projection horizon (number of leads, `h = 0,…,H-1`). Returns an
 `SPIVResult{Float64, SPIVwithLP}` with the point estimate `β̂` (eq. 9), the
-strong-identification sandwich variance (eqs. 18–19), and the structural residuals.
+strong-identification sandwich variance (eqs. 18–19), the structural residuals, the
+weak-IV diagnostic (Proposition 7), and a robust confidence set.
 
-The weak-IV / robust-inference / IRF blocks are NaN stubs at this phase; `weak_iv`,
-`ξ`, and `grid_length` are accepted to keep the public signature stable but are only
-consumed once Phases 3–4 populate those blocks.
+Keyword arguments controlling inference (docs/technical.md §6–7):
+
+- `weak_iv` — robust test to invert for the confidence set, `:AR` (default) or `:KLM`.
+- `α` — significance level for the weak-IV and robust critical values (default 0.05).
+- `ξ` — bias tolerance entering the weak-IV critical value (default 0.10).
+- `grid_length` — points per parameter in the confidence-set grid (default 30).
+- `grid_scale` — half-width of the grid box in standard errors: each parameter ranges
+  over `β̂ ± grid_scale·se` (default 10).
+
+The IRF blocks remain NaN stubs until Phase 4.
 """
 function spiv(
     y::AbstractVector{<:Real},
@@ -72,8 +80,10 @@ function spiv(
     Z::AbstractMatrix{<:Real};
     H::Int,
     weak_iv::Symbol = :AR,
+    α::Real = 0.05,
     ξ::Real = 0.10,
     grid_length::Int = 30,
+    grid_scale::Real = 10,
 )
     # --- promote to a common float type -----------------------------------
     yv = collect(Float64, y)
@@ -104,6 +114,11 @@ function spiv(
     T_eff - Nx - K > 0 || throw(
         ArgumentError(
             "insufficient degrees of freedom: T_eff - Nx - K = $(T_eff - Nx - K) ≤ 0",
+        ),
+    )
+    T_eff - Nx - Nz > 0 || throw(
+        ArgumentError(
+            "insufficient degrees of freedom for Ŵ₂: T_eff - Nx - Nz = $(T_eff - Nx - Nz) ≤ 0",
         ),
     )
 
@@ -150,15 +165,43 @@ function spiv(
     vβ = Ainv * M * Ainv
     vcov = Matrix(Symmetric(vβ ./ T_eff))      # K × K, symmetrized
 
-    return SPIVResult(
+    # --- weak-IV inference (docs/technical.md §6–7) ----------------------
+    v_res, W2 = _first_stage_resid_cov(Y_perp, Z_perp, Czz, T_eff, Nx, Nz)
+    weak = _weak_iv_diagnostic(YPY, W2, R, H, Nz, ξ, α)
+    se = sqrt.(diag(vcov))
+    robust = _robust_inference(
+        weak_iv,
+        β,
+        se,
+        y_perp,
+        Y_perp,
+        v_res,
+        Z_perp,
+        collect(Czz),
+        R,
+        H,
+        K,
+        Nz,
+        Nx,
+        T_eff,
+        α,
+        grid_length,
+        grid_scale,
+    )
+
+    return SPIVResult{Float64,SPIVwithLP}(
         SPIVwithLP(),
         β,
         vcov,
-        û;
-        H = H,
-        K = K,
-        Nz = Nz,
-        Nx = Nx,
-        T_eff = T_eff,
+        û,
+        weak,
+        robust,
+        IRFBlock{Float64}(H, Nz),
+        IRFBlock{Float64}(H, K, Nz),
+        H,
+        K,
+        Nz,
+        Nx,
+        T_eff,
     )
 end
