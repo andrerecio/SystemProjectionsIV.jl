@@ -31,10 +31,10 @@ Detect collinear columns in design matrix X.
 - `X_reduced::Matrix{T}`: Matrix with only non-collinear columns
 """
 function detect_collinearity(
-    X::Matrix{T};
-    tol::Real = 1e-8,
-    method::Symbol = :qr,
-) where {T<:AbstractFloat}
+        X::Matrix{T};
+        tol::Real = 1e-8,
+        method::Symbol = :qr
+) where {T <: AbstractFloat}
     if method == :qr
         return detect_collinearity_qr(X; tol = tol)
     elseif method == :sweep
@@ -58,7 +58,7 @@ More numerically stable but uses more memory for large n.
 - `basis::BitVector`: Indicator of non-collinear columns
 - `X_reduced::Matrix{T}`: Matrix with only non-collinear columns
 """
-function detect_collinearity_qr(X::Matrix{T}; tol::Real = 1e-8) where {T<:AbstractFloat}
+function detect_collinearity_qr(X::Matrix{T}; tol::Real = 1e-8) where {T <: AbstractFloat}
     n, k = size(X)
 
     # Handle edge case: no columns
@@ -122,7 +122,7 @@ end
 
 Compute X'X efficiently using BLAS syrk (symmetric rank-k update).
 """
-function compute_crossproduct(X::Matrix{T}) where {T<:BlasReal}
+function compute_crossproduct(X::Matrix{T}) where {T <: BlasReal}
     k = size(X, 2)
     XX = Matrix{T}(undef, k, k)
     BLAS.syrk!('U', 'T', one(T), X, zero(T), XX)
@@ -160,14 +160,14 @@ redundant matrix subsetting and coefficient solving.
 - `beta_reduced::Vector{T}`: Coefficients for non-collinear columns only
 """
 function fit_ols_core!(
-    rr::OLSResponse{T},
-    X::Matrix{T},
-    factorization::Symbol;
-    tol::Real = 1e-8,
-    save_matrices::Bool = true,
-    collinearity::Symbol = :qr,
-    has_intercept::Bool = false,
-) where {T<:AbstractFloat}
+        rr::OLSResponse{T},
+        X::Matrix{T},
+        factorization::Symbol;
+        tol::Real = 1e-8,
+        save_matrices::Bool = true,
+        collinearity::Symbol = :qr,
+        has_intercept::Bool = false
+) where {T <: AbstractFloat}
 
     # Use sweep factorization (fastest, matches FEM)
     if factorization == :sweep
@@ -193,11 +193,11 @@ end
 Internal Cholesky-based OLS solver.
 """
 function _fit_cholesky!(
-    rr::OLSResponse{T},
-    X::Matrix{T},
-    X_reduced::Matrix{T},
-    basis_coef::BitVector,
-    save_matrices::Bool,
+        rr::OLSResponse{T},
+        X::Matrix{T},
+        X_reduced::Matrix{T},
+        basis_coef::BitVector,
+        save_matrices::Bool
 ) where {T}
 
     # Compute X'X using BLAS syrk (more efficient than X_reduced' * X_reduced)
@@ -222,7 +222,7 @@ function _fit_cholesky!(
             Matrix{T}(undef, 0, 0),
             Matrix{T}(undef, 0, 0),
             beta,
-            chol_fact,
+            chol_fact
         )
     end
 
@@ -233,11 +233,11 @@ end
 Internal QR-based OLS solver.
 """
 function _fit_qr!(
-    rr::OLSResponse{T},
-    X::Matrix{T},
-    X_reduced::Matrix{T},
-    basis_coef::BitVector,
-    save_matrices::Bool,
+        rr::OLSResponse{T},
+        X::Matrix{T},
+        X_reduced::Matrix{T},
+        basis_coef::BitVector,
+        save_matrices::Bool
 ) where {T}
 
     # QR factorization
@@ -268,11 +268,11 @@ Matches FixedEffectModels.jl approach - collinearity detection, inverse,
 and coefficients all computed in one sweep pass.
 """
 function _fit_sweep!(
-    rr::OLSResponse{T},
-    X::Matrix{T},
-    save_matrices::Bool,
-    has_intercept::Bool,
-    tol::Real,
+        rr::OLSResponse{T},
+        X::Matrix{T},
+        save_matrices::Bool,
+        has_intercept::Bool,
+        tol::Real
 ) where {T}
     n, k = size(X)
 

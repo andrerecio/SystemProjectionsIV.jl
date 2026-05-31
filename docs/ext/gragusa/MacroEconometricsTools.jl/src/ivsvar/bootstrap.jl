@@ -38,14 +38,14 @@ proxy-SVAR parameters.
 Named tuple: `(irf, irf_norm, fevd, svma)`, each (K, n_imp) matrix.
 """
 function proxy_svar_dynamics(
-    A_est::AbstractMatrix{T},
-    Σ_uu::AbstractMatrix{T},
-    Σ_um::AbstractVector{T},
-    H1::AbstractVector{T},
-    p::Int,
-    norm_scale::Float64,
-    n_imp::Int,
-    target::Int,
+        A_est::AbstractMatrix{T},
+        Σ_uu::AbstractMatrix{T},
+        Σ_um::AbstractVector{T},
+        H1::AbstractVector{T},
+        p::Int,
+        norm_scale::Float64,
+        n_imp::Int,
+        target::Int
 ) where {T}
     K = length(H1)
 
@@ -156,7 +156,7 @@ function ProxyDynamicsBuffers{T}(K::Int, p::Int, n_imp::Int) where {T}
         Matrix{T}(undef, K, K),
         Matrix{T}(undef, K, K),
         Vector{T}(undef, K),
-        Vector{T}(undef, K),
+        Vector{T}(undef, K)
     )
 end
 
@@ -167,15 +167,15 @@ In-place variant of `proxy_svar_dynamics`. Writes results into `buf`'s output
 matrices (`buf.irf`, `buf.irf_norm`, `buf.fevd`, `buf.svma`) and returns `buf`.
 """
 function proxy_svar_dynamics!(
-    buf::ProxyDynamicsBuffers{T},
-    A_est::AbstractMatrix{T},
-    Σ_uu::AbstractMatrix{T},
-    Σ_um::AbstractVector{T},
-    H1::AbstractVector{T},
-    p::Int,
-    norm_scale::Float64,
-    n_imp::Int,
-    target::Int,
+        buf::ProxyDynamicsBuffers{T},
+        A_est::AbstractMatrix{T},
+        Σ_uu::AbstractMatrix{T},
+        Σ_um::AbstractVector{T},
+        H1::AbstractVector{T},
+        p::Int,
+        norm_scale::Float64,
+        n_imp::Int,
+        target::Int
 ) where {T}
     K = length(H1)
     Kp = K * p
@@ -271,9 +271,9 @@ Returns: (A_est, U_est, Σ_uu, Σ_um, H1)
 - H1: (K,) identified impact column
 """
 function estimate_proxy_svar(
-    yy::AbstractMatrix{T},
-    xx::AbstractMatrix{T},
-    mm::AbstractVector{T},
+        yy::AbstractMatrix{T},
+        xx::AbstractMatrix{T},
+        mm::AbstractVector{T}
 ) where {T}
     TT, KK = size(yy)
 
@@ -328,7 +328,7 @@ function ProxySvarBuffers{T}(TT::Int, KK::Int, d::Int) where {T}
         Matrix{T}(undef, d, d),
         Matrix{T}(undef, d, KK),
         Matrix{T}(undef, KK, KK),
-        Vector{T}(undef, KK),
+        Vector{T}(undef, KK)
     )
 end
 
@@ -341,10 +341,10 @@ Throws `PosDefException` or `SingularException` on rank-deficient inputs; the
 caller is expected to catch these and record a failed draw.
 """
 function estimate_proxy_svar!(
-    buf::ProxySvarBuffers{T},
-    yy::AbstractMatrix{T},
-    xx::AbstractMatrix{T},
-    mm::AbstractVector{T},
+        buf::ProxySvarBuffers{T},
+        yy::AbstractMatrix{T},
+        xx::AbstractMatrix{T},
+        mm::AbstractVector{T}
 ) where {T}
     TT, KK = size(yy)
     d = size(xx, 2)
@@ -409,11 +409,11 @@ When `inf.compute_ar == true` and `inf.ar_grid === nothing`, a default grid of
 - `rng`: Random number generator for reproducibility
 """
 function proxy_svar_mbb(
-    model::VARModel{T},
-    id::IVIdentification,
-    horizon::Int,
-    inf::ProxySVARMBB;
-    rng::AbstractRNG = Random.default_rng(),
+        model::VARModel{T},
+        id::IVIdentification,
+        horizon::Int,
+        inf::ProxySVARMBB;
+        rng::AbstractRNG = Random.default_rng()
 ) where {T}
     resolved = _resolve_iv(model, id)
     ν = model.residuals
@@ -429,7 +429,7 @@ function proxy_svar_mbb(
             compute_ar = true,
             ar_grid = collect(range(-10.0, 10.0; length = 201)),
             norm_scale = inf.norm_scale,
-            save_draws = inf.save_draws,
+            save_draws = inf.save_draws
         )
     else
         inf
@@ -440,17 +440,17 @@ end
 
 # Backward compat: instrument in model
 function proxy_svar_mbb(
-    model::VARModel{T,<:IVSVAR},
-    horizon::Int,
-    inf::ProxySVARMBB;
-    rng::AbstractRNG = Random.default_rng(),
+        model::VARModel{T, <:IVSVAR},
+        horizon::Int,
+        inf::ProxySVARMBB;
+        rng::AbstractRNG = Random.default_rng()
 ) where {T}
     return proxy_svar_mbb(
         model,
         IVIdentification(model.spec.instrument),
         horizon,
         inf;
-        rng = rng,
+        rng = rng
     )
 end
 
@@ -458,12 +458,12 @@ end
 Internal implementation of the Jentsch-Lunsford MBB. Called by `proxy_svar_mbb`.
 """
 function _proxy_svar_mbb_impl(
-    model::VARModel{T},
-    proxy::Vector{T},
-    horizon::Int,
-    inf::ProxySVARMBB,
-    target::Int;
-    rng::AbstractRNG = Random.default_rng(),
+        model::VARModel{T},
+        proxy::Vector{T},
+        horizon::Int,
+        inf::ProxySVARMBB,
+        target::Int;
+        rng::AbstractRNG = Random.default_rng()
 ) where {T}
     ν = model.residuals
     TT, KK = size(ν)
@@ -602,8 +602,8 @@ function _proxy_svar_mbb_impl(
 
         # 4e: Re-estimate proxy-SVAR on bootstrap sample (in-place)
         try
-            A_star, U_star, Σ_uu_star, Σ_um_star, H1_star =
-                estimate_proxy_svar!(est_buf, y_star, x_star, m_star)
+            A_star, U_star, Σ_uu_star,
+            Σ_um_star, H1_star = estimate_proxy_svar!(est_buf, y_star, x_star, m_star)
 
             # 4f: Compute bootstrap dynamics (in-place)
             proxy_svar_dynamics!(
@@ -615,7 +615,7 @@ function _proxy_svar_mbb_impl(
                 p_val,
                 s,
                 n_imp,
-                target,
+                target
             )
 
             copyto!(view(irf_store,:,:,b), dyn_buf.irf)
@@ -630,8 +630,8 @@ function _proxy_svar_mbb_impl(
                     grid_g = inf.ar_grid[g]
                     for h in 1:n_imp
                         for k in 1:KK
-                            ar_store[k, h, g, b] =
-                                s * svma_star[k, h] - svma_target * grid_g
+                            ar_store[
+                                k, h, g, b] = s * svma_star[k, h] - svma_target * grid_g
                         end
                     end
                 end
@@ -667,7 +667,7 @@ function _proxy_svar_mbb_impl(
         p_val,
         s,
         n_imp,
-        target,
+        target
     )
 
     halls68_irf_norm = _halls_intervals(ci68_irf_norm, dyn_point.irf_norm)
@@ -695,7 +695,7 @@ function _proxy_svar_mbb_impl(
         point_fevd = dyn_point.fevd,
         point_svma = dyn_point.svma,
         irf_store = irf_store,
-        n_failed = n_failed,
+        n_failed = n_failed
     )
 end
 
@@ -709,7 +709,7 @@ end
 Compute 68% and 95% percentile confidence intervals from bootstrap draws.
 `store` has shape (K, n_imp, n_boot). Returns (2, n_imp, K) arrays.
 """
-function _percentile_intervals(store::Array{T,3}, n_boot::Int) where {T}
+function _percentile_intervals(store::Array{T, 3}, n_boot::Int) where {T}
     KK, n_imp, _ = size(store)
 
     # Sort along bootstrap dimension
@@ -753,7 +753,7 @@ Hall's bias-corrected percentile intervals:
   lower = 2*θ̂ - upper_percentile
   upper = 2*θ̂ - lower_percentile
 """
-function _halls_intervals(pctile_ci::Array{T,3}, irf_point::Matrix{T}) where {T}
+function _halls_intervals(pctile_ci::Array{T, 3}, irf_point::Matrix{T}) where {T}
     _, n_imp, KK = size(pctile_ci)
     halls = zeros(T, 2, n_imp, KK)
 
@@ -785,11 +785,11 @@ Returns named tuple with `index68`, `index90`, `index95` (boolean arrays)
 and `grid`.
 """
 function _ar_confidence_sets(
-    ar_store::Array{T,4},
-    grid::Vector{Float64},
-    scale::Float64,
-    n_boot::Int,
-    target::Int,
+        ar_store::Array{T, 4},
+        grid::Vector{Float64},
+        scale::Float64,
+        n_boot::Int,
+        target::Int
 ) where {T}
     KK, n_imp, n_grid, _ = size(ar_store)
 
@@ -830,7 +830,7 @@ function _ar_confidence_sets(
         index90 = index90,
         index95 = index95,
         grid = grid,
-        rates = rates,
+        rates = rates
     )
 end
 
@@ -850,21 +850,22 @@ Anderson-Rubin confidence set (weak-instrument robust). Otherwise, percentile CI
 are used.
 """
 function compute_inference_bands(
-    model::VARModel{T},
-    identification::IVIdentification,
-    irf_point::Array{T,3},
-    inf::ProxySVARMBB,
-    coverage::Vector{Float64},
-    ::AbstractNormalization,  # ProxySVARMBB uses its own norm_scale
-    rng::AbstractRNG,
+        model::VARModel{T},
+        identification::IVIdentification,
+        irf_point::Array{T, 3},
+        inf::ProxySVARMBB,
+        coverage::Vector{Float64},
+        ::AbstractNormalization,  # ProxySVARMBB uses its own norm_scale
+        rng::AbstractRNG
 ) where {T}
     horizon = size(irf_point, 1) - 1
     id = _resolve_iv(model, identification)
-    _, target = _extract_instrument(
+    _,
+    target = _extract_instrument(
         id.instrument,
         size(model.residuals, 1),
         n_lags(model),
-        model.names,
+        model.names
     )
 
     # Run the full MBB
@@ -900,8 +901,8 @@ function compute_inference_bands(
     draws = inf.save_draws ? draws_4d : nothing
     stderr = dropdims(std(draws_4d; dims = 1); dims = 1)
 
-    lower = Vector{Array{T,3}}(undef, length(coverage))
-    upper = Vector{Array{T,3}}(undef, length(coverage))
+    lower = Vector{Array{T, 3}}(undef, length(coverage))
+    upper = Vector{Array{T, 3}}(undef, length(coverage))
 
     for (i, α) in enumerate(coverage)
         lb = zeros(T, n_imp, K, K)
@@ -945,17 +946,16 @@ end
 
 # Auto-dispatch: BlockBootstrap + IVIdentification → ProxySVARMBB (J&L corrected)
 function compute_inference_bands(
-    model::VARModel{T},
-    identification::IVIdentification,
-    irf_point::Array{T,3},
-    inf::BlockBootstrap,
-    coverage::Vector{Float64},
-    normalization::AbstractNormalization,
-    rng::AbstractRNG,
+        model::VARModel{T},
+        identification::IVIdentification,
+        irf_point::Array{T, 3},
+        inf::BlockBootstrap,
+        coverage::Vector{Float64},
+        normalization::AbstractNormalization,
+        rng::AbstractRNG
 ) where {T}
     # Promote to Jentsch-Lunsford MBB which jointly resamples (residuals, proxy)
-    proxy_inf =
-        ProxySVARMBB(inf.reps; block_length = inf.block_length, save_draws = inf.save_draws)
+    proxy_inf = ProxySVARMBB(inf.reps; block_length = inf.block_length, save_draws = inf.save_draws)
     return compute_inference_bands(
         model,
         identification,
@@ -963,25 +963,25 @@ function compute_inference_bands(
         proxy_inf,
         coverage,
         normalization,
-        rng,
+        rng
     )
 end
 
 # Error guard: ProxySVARMBB requires IVIdentification
 function compute_inference_bands(
-    ::VARModel{T},
-    identification::AbstractIdentification,
-    ::Array{T,3},
-    ::ProxySVARMBB,
-    ::Vector{Float64},
-    ::AbstractNormalization,
-    ::AbstractRNG,
+        ::VARModel{T},
+        identification::AbstractIdentification,
+        ::Array{T, 3},
+        ::ProxySVARMBB,
+        ::Vector{Float64},
+        ::AbstractNormalization,
+        ::AbstractRNG
 ) where {T}
     throw(
         ArgumentError(
-            "ProxySVARMBB inference requires IVIdentification. " *
-            "Use IVIdentification(Z, target_shock) or a different inference method.",
-        ),
+        "ProxySVARMBB inference requires IVIdentification. " *
+        "Use IVIdentification(Z, target_shock) or a different inference method.",
+    ),
     )
 end
 

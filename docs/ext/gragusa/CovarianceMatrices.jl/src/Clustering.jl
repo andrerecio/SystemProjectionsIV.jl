@@ -52,7 +52,7 @@ cl.ngroups # 3
 function Clustering(v::AbstractVector)
     n = length(v)
     groups = Vector{Int}(undef, n)
-    groupmap = Dict{eltype(v),Int}()
+    groupmap = Dict{eltype(v), Int}()
     ngroups = 0
     @inbounds for i in eachindex(v)
         val = v[i]
@@ -120,8 +120,8 @@ function Clustering(c1::Clustering, cs::Clustering...; sort = nothing)
 
     groups = Vector{Int}(undef, n)
     nvecs = length(cs) + 1
-    KeyType = NTuple{nvecs,Int}
-    groupmap = Dict{KeyType,Int}()
+    KeyType = NTuple{nvecs, Int}
+    groupmap = Dict{KeyType, Int}()
     ngroups = 0
 
     @inbounds for i in 1:n

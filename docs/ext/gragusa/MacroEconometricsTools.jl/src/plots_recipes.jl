@@ -51,11 +51,11 @@ function _resolve_labels(labels, nms::Vector{Symbol}, suffix::AbstractString)
 end
 
 function _prepare_irf_plot(
-    irf::AbstractIRFResult;
-    vars = :all,
-    shocks = :all,
-    pretty_vars = nothing,
-    pretty_shocks = nothing,
+        irf::AbstractIRFResult;
+        vars = :all,
+        shocks = :all,
+        pretty_vars = nothing,
+        pretty_shocks = nothing
 )
     nms = _var_names(irf)
     idxvars = _resolve_indices(nms, vars, :vars)
@@ -66,25 +66,25 @@ function _prepare_irf_plot(
         idxvars = idxvars,
         idxshocks = idxshocks,
         var_labels = var_labels_full[idxvars],
-        shock_labels = shock_labels_full[idxshocks],
+        shock_labels = shock_labels_full[idxshocks]
     )
 end
 
 RecipesBase.@recipe function f(
-    irf::IRFResult;
-    vars = :all,
-    shocks = :all,
-    pretty_shocks = nothing,
-    pretty_vars = nothing,
-    drawzero = true,
-    zerolinecol = :lightgray,
+        irf::IRFResult;
+        vars = :all,
+        shocks = :all,
+        pretty_shocks = nothing,
+        pretty_vars = nothing,
+        drawzero = true,
+        zerolinecol = :lightgray
 )
     info = _prepare_irf_plot(
         irf;
         vars = vars,
         shocks = shocks,
         pretty_vars = pretty_vars,
-        pretty_shocks = pretty_shocks,
+        pretty_shocks = pretty_shocks
     )
 
     layout --> (length(info.idxvars), length(info.idxshocks))
@@ -159,17 +159,17 @@ Supports three plot types:
 - `:both` - Show both paths and quantiles
 """
 RecipesBase.@recipe function f(
-    irf::SignRestrictedIRFResult;
-    vars = :all,
-    shocks = :all,
-    pretty_shocks = nothing,
-    pretty_vars = nothing,
-    plot_type = :quantiles,
-    path_alpha = 0.02,
-    path_color = :gray,
-    median_color = :black,
-    drawzero = true,
-    zerolinecol = :lightgray,
+        irf::SignRestrictedIRFResult;
+        vars = :all,
+        shocks = :all,
+        pretty_shocks = nothing,
+        pretty_vars = nothing,
+        plot_type = :quantiles,
+        path_alpha = 0.02,
+        path_color = :gray,
+        median_color = :black,
+        drawzero = true,
+        zerolinecol = :lightgray
 )
 
     # Use unified _prepare_irf_plot helper
@@ -178,7 +178,7 @@ RecipesBase.@recipe function f(
         vars = vars,
         shocks = shocks,
         pretty_vars = pretty_vars,
-        pretty_shocks = pretty_shocks,
+        pretty_shocks = pretty_shocks
     )
 
     idxvars = info.idxvars
@@ -285,17 +285,17 @@ Supports:
 Scale data before plotting with `rescale` / `rescale!`.
 """
 RecipesBase.@recipe function f(
-    irf::BayesianIRFResult;
-    vars = :all,
-    shocks = :all,
-    pretty_shocks = nothing,
-    pretty_vars = nothing,
-    plot_type = :quantiles,
-    path_alpha = 0.02,
-    path_color = :gray,
-    median_color = :black,
-    drawzero = true,
-    zerolinecol = :lightgray,
+        irf::BayesianIRFResult;
+        vars = :all,
+        shocks = :all,
+        pretty_shocks = nothing,
+        pretty_vars = nothing,
+        plot_type = :quantiles,
+        path_alpha = 0.02,
+        path_color = :gray,
+        median_color = :black,
+        drawzero = true,
+        zerolinecol = :lightgray
 )
 
     # Get variable and shock names from AxisArray axes
@@ -308,16 +308,14 @@ RecipesBase.@recipe function f(
     horizons = collect(AxisArrays.axisvalues(horizon_axis)[1])
 
     # Resolve variable and shock indices
-    idxvars =
-        vars === :all ? (1:length(all_vars)) : _resolve_indices_generic(all_vars, vars)
-    idxshocks =
-        shocks === :all ? (1:length(all_shocks)) :
-        _resolve_indices_generic(all_shocks, shocks)
+    idxvars = vars === :all ? (1:length(all_vars)) :
+              _resolve_indices_generic(all_vars, vars)
+    idxshocks = shocks === :all ? (1:length(all_shocks)) :
+                _resolve_indices_generic(all_shocks, shocks)
 
     var_labels = pretty_vars === nothing ? string.(all_vars[idxvars]) : pretty_vars
-    shock_labels =
-        pretty_shocks === nothing ? string.(all_shocks[idxshocks]) .* " shock" :
-        pretty_shocks
+    shock_labels = pretty_shocks === nothing ? string.(all_shocks[idxshocks]) .* " shock" :
+                   pretty_shocks
 
     layout --> (length(idxvars), length(idxshocks))
     titlefontsize --> 5
@@ -414,14 +412,14 @@ Plot recipe for Local Projection IRFs.
 Scale data before plotting with `rescale` / `rescale!`.
 """
 RecipesBase.@recipe function f(
-    irf::LocalProjectionIRFResult;
-    vars = :all,
-    shocks = :all,
-    pretty_vars = nothing,
-    pretty_shocks = nothing,
-    drawzero = true,
-    zerolinecol = :lightgray,
-    linecolor = :black,
+        irf::LocalProjectionIRFResult;
+        vars = :all,
+        shocks = :all,
+        pretty_vars = nothing,
+        pretty_shocks = nothing,
+        drawzero = true,
+        zerolinecol = :lightgray,
+        linecolor = :black
 )
 
     # Get dimensions from AxisArray axes
@@ -433,17 +431,14 @@ RecipesBase.@recipe function f(
     all_shocks = collect(AxisArrays.axisvalues(shock_axis)[1])
     horizons = collect(AxisArrays.axisvalues(horizon_axis)[1])
 
-    idxvars =
-        vars === :all ? collect(1:length(all_responses)) :
-        _resolve_indices_generic(all_responses, vars)
-    idxshocks =
-        shocks === :all ? collect(1:length(all_shocks)) :
-        _resolve_indices_generic(all_shocks, shocks)
+    idxvars = vars === :all ? collect(1:length(all_responses)) :
+              _resolve_indices_generic(all_responses, vars)
+    idxshocks = shocks === :all ? collect(1:length(all_shocks)) :
+                _resolve_indices_generic(all_shocks, shocks)
 
     var_labels = pretty_vars === nothing ? string.(all_responses[idxvars]) : pretty_vars
-    shock_labels =
-        pretty_shocks === nothing ? string.(all_shocks[idxshocks]) .* " shock" :
-        pretty_shocks
+    shock_labels = pretty_shocks === nothing ? string.(all_shocks[idxshocks]) .* " shock" :
+                   pretty_shocks
 
     layout --> (length(idxvars), length(idxshocks))
     titlefontsize --> 5

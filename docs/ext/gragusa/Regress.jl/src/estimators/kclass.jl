@@ -22,23 +22,23 @@ the K-class coefficient formula instead of two-stage least squares.
 - `IVEstimator{T, V}`: Fitted model with parametric vcov type
 """
 function fit_kclass_estimator(
-    estimator::AbstractIVEstimator,
-    @nospecialize(df),
-    formula::FormulaTerm;
-    contrasts::Dict = Dict{Symbol,Any}(),
-    weights::Union{Symbol,Nothing} = nothing,
-    save::Union{Bool,Symbol} = :residuals,
-    save_cluster::Union{Symbol,Vector{Symbol},Nothing} = nothing,
-    dof_add::Integer = 0,
-    method::Symbol = :cpu,
-    nthreads::Integer = method == :cpu ? Threads.nthreads() : 256,
-    double_precision::Bool = method == :cpu,
-    tol::Real = 1e-6,
-    maxiter::Integer = 10000,
-    drop_singletons::Bool = true,
-    progress_bar::Bool = true,
-    subset::Union{Nothing,AbstractVector} = nothing,
-    first_stage::Bool = true,
+        estimator::AbstractIVEstimator,
+        @nospecialize(df),
+        formula::FormulaTerm;
+        contrasts::Dict = Dict{Symbol, Any}(),
+        weights::Union{Symbol, Nothing} = nothing,
+        save::Union{Bool, Symbol} = :residuals,
+        save_cluster::Union{Symbol, Vector{Symbol}, Nothing} = nothing,
+        dof_add::Integer = 0,
+        method::Symbol = :cpu,
+        nthreads::Integer = method == :cpu ? Threads.nthreads() : 256,
+        double_precision::Bool = method == :cpu,
+        tol::Real = 1e-6,
+        maxiter::Integer = 10000,
+        drop_singletons::Bool = true,
+        progress_bar::Bool = true,
+        subset::Union{Nothing, AbstractVector} = nothing,
+        first_stage::Bool = true
 )
     # Validate save keyword
     save, save_residuals = validate_save_keyword(save)
@@ -47,7 +47,7 @@ function fit_kclass_estimator(
     nthreads = validate_nthreads(method, nthreads)
 
     # Convert contrasts to Dict{Symbol, Any}
-    contrasts = convert(Dict{Symbol,Any}, contrasts)
+    contrasts = convert(Dict{Symbol, Any}, contrasts)
 
     # Convert to DataFrame
     df = DataFrame(df; copycols = false)
@@ -59,8 +59,7 @@ function fit_kclass_estimator(
     data_prep = prepare_data(df, formula, weights, subset, save, drop_singletons, nthreads)
 
     # Extract cluster variables
-    cluster_data =
-        extract_cluster_variables(df, data_prep.fe_vars, save_cluster, data_prep.esample)
+    cluster_data = extract_cluster_variables(df, data_prep.fe_vars, save_cluster, data_prep.esample)
 
     # Create subsetted dataframe and weights
     if data_prep.has_weights
@@ -71,9 +70,8 @@ function fit_kclass_estimator(
 
     # Create subsetted dataframe
     subdf = _create_subdf(df, data_prep.all_vars, data_prep.esample)
-    subfes =
-        isempty(data_prep.fes) ? FixedEffect[] :
-        FixedEffect[fe[data_prep.esample] for fe in data_prep.fes]
+    subfes = isempty(data_prep.fes) ? FixedEffect[] :
+             FixedEffect[fe[data_prep.esample] for fe in data_prep.fes]
 
     ##############################################################################
     ## Create Model Matrices
@@ -83,15 +81,14 @@ function fit_kclass_estimator(
 
     # Apply schema for exogenous variables
     s = schema(data_prep.formula, subdf, contrasts)
-    formula_schema =
-        apply_schema(data_prep.formula, s, IVEstimator, data_prep.has_fe_intercept)
+    formula_schema = apply_schema(data_prep.formula, s, IVEstimator, data_prep.has_fe_intercept)
 
     y_raw = response(formula_schema, subdf)
     y_raw isa AbstractVector || throw(
         ArgumentError(
-            "the response variable must be numeric (got a matrix — " *
-            "check that the dependent variable column is not a String or categorical type)",
-        ),
+        "the response variable must be numeric (got a matrix — " *
+        "check that the dependent variable column is not a String or categorical type)",
+    ),
     )
     y = convert(Vector{T}, y_raw)
     Xexo = convert(Matrix{T}, modelmatrix(formula_schema, subdf))
@@ -101,7 +98,7 @@ function fit_kclass_estimator(
     formula_endo_schema = apply_schema(
         data_prep.formula_endo,
         schema(data_prep.formula_endo, subdf, contrasts),
-        StatisticalModel,
+        StatisticalModel
     )
     Xendo = convert(Matrix{T}, modelmatrix(formula_endo_schema, subdf))
     _, coefnames_endo = coefnames(formula_endo_schema)
@@ -109,7 +106,7 @@ function fit_kclass_estimator(
     formula_iv_schema = apply_schema(
         data_prep.formula_iv,
         schema(data_prep.formula_iv, subdf, contrasts),
-        StatisticalModel,
+        StatisticalModel
     )
     Z = convert(Matrix{T}, modelmatrix(formula_iv_schema, subdf))
     _, coefnames_iv = coefnames(formula_iv_schema)
@@ -127,8 +124,8 @@ function fit_kclass_estimator(
     coef_names = vcat(coefnames_exo, coefnames_endo)
 
     # Filter rows with NaN (e.g. from lags() producing NaN for out-of-bounds entries)
-    y, (Xexo, Xendo, Z), wts, subfes, nobs_eff, has_nan_rows, nan_rows =
-        _filter_nan_rows(y, (Xexo, Xendo, Z), wts, subfes)
+    y, (Xexo, Xendo, Z), wts, subfes, nobs_eff,
+    has_nan_rows, nan_rows = _filter_nan_rows(y, (Xexo, Xendo, Z), wts, subfes)
 
     # Compute total sum of squares
     tss_total = tss(y, data_prep.has_intercept | data_prep.has_fe_intercept, wts)
@@ -154,28 +151,31 @@ function fit_kclass_estimator(
         cols = vcat(eachcol(y), eachcol(Xexo), eachcol(Xendo), eachcol(Z))
         colnames = vcat(response_name, coefnames_exo, coefnames_endo, coefnames_iv)
 
-        feM, iterations, converged, tss_partial, oldy_temp, oldX_temp =
-            partial_out_fixed_effects!(
-                cols,
-                colnames,
-                subfes,
-                wts,
-                method,
-                nthreads,
-                tol,
-                maxiter,
-                progress_bar,
-                data_prep.save_fes,
-                data_prep.has_intercept,
-                data_prep.has_fe_intercept,
-                T,
-            )
+        feM, iterations,
+        converged,
+        tss_partial,
+        oldy_temp,
+        oldX_temp = partial_out_fixed_effects!(
+            cols,
+            colnames,
+            subfes,
+            wts,
+            method,
+            nthreads,
+            tol,
+            maxiter,
+            progress_bar,
+            data_prep.save_fes,
+            data_prep.has_intercept,
+            data_prep.has_fe_intercept,
+            T
+        )
 
         if data_prep.save_fes && oldX_temp !== nothing
             n_exo = size(Xexo, 2)
             oldX = hcat(
                 oldX_temp[:, 1:n_exo],
-                oldX_temp[:, (n_exo + 1):(n_exo + size(Xendo, 2))],
+                oldX_temp[:, (n_exo + 1):(n_exo + size(Xendo, 2))]
             )
             oldy = oldy_temp
         end
@@ -212,7 +212,7 @@ function fit_kclass_estimator(
         XendoXendo,
         ZZ,
         data_prep.has_intercept,
-        coefnames_endo,
+        coefnames_endo
     )
 
     Xexo, Xendo, Z = coll.Xexo, coll.Xendo, coll.Z
@@ -308,9 +308,9 @@ function fit_kclass_estimator(
                 XexoXendo,
                 ZZ.data,
                 ZXendo,
-                zeros(T, k_endo_final, k_endo_final),
+                zeros(T, k_endo_final, k_endo_final)
             ],
-            [k_exo_final, k_z_final, k_endo_final],
+            [k_exo_final, k_z_final, k_endo_final]
         )
         Pi = ls_solve!(newZnewZ_aug, k_exo_final + k_z_final)
 
@@ -338,14 +338,14 @@ function fit_kclass_estimator(
             dof_fes_local,
             endo_names_final,
             k_exo_final,
-            data_prep.has_intercept,
+            data_prep.has_intercept
         )
 
         first_stage_data = fstats.first_stage_data
-        F_first_stage_robust, p_first_stage_robust =
-            fstats.F_kp_per_endo, fstats.p_kp_per_endo
-        F_first_stage_nonrobust, p_first_stage_nonrobust, _, _ =
-            _compute_first_stage_f_iid(first_stage_data, nobs_eff, dof_fes_local)
+        F_first_stage_robust,
+        p_first_stage_robust = fstats.F_kp_per_endo, fstats.p_kp_per_endo
+        F_first_stage_nonrobust, p_first_stage_nonrobust,
+        _, _ = _compute_first_stage_f_iid(first_stage_data, nobs_eff, dof_fes_local)
         F_kp_joint, p_kp_joint = fstats.F_kp, fstats.p_kp
     end
 
@@ -452,7 +452,7 @@ function fit_kclass_estimator(
         invZ_fullZZ,  # Full instrument matrix for leverage
         fe_groups,
         data_prep.fekeys,
-        ngroups_fes,
+        ngroups_fes
     )
 
     ##############################################################################
@@ -462,24 +462,24 @@ function fit_kclass_estimator(
     augmentdf = DataFrame()
     if data_prep.save_fes && oldy !== nothing
         coef_nonnan = coef[basis_coef]
-        newfes, b, c = solve_coefficients!(
+        newfes, b,
+        c = solve_coefficients!(
             oldy - oldX * coef_nonnan,
             feM;
             tol = tol,
-            maxiter = maxiter,
+            maxiter = maxiter
         )
         for fekey in data_prep.fekeys
             augmentdf[!, fekey] = df[!, fekey]
         end
         for j in eachindex(subfes)
-            augmentdf[!, data_prep.feids[j]] =
-                Vector{Union{T,Missing}}(missing, data_prep.nrows)
+            augmentdf[!, data_prep.feids[j]] = Vector{Union{T, Missing}}(missing, data_prep.nrows)
             augmentdf[data_prep.esample, data_prep.feids[j]] = newfes[j]
         end
     end
 
-    esample_final =
-        data_prep.esample isa Colon ? trues(data_prep.nrows) : BitVector(data_prep.esample)
+    esample_final = data_prep.esample isa Colon ? trues(data_prep.nrows) :
+                    BitVector(data_prep.esample)
     if has_nan_rows
         idx = findall(esample_final)
         esample_final[idx[nan_rows]] .= false
@@ -512,8 +512,8 @@ function fit_kclass_estimator(
 
     # Compute robust F-statistic (Wald test)
     has_int = hasintercept(data_prep.formula_origin)
-    F_stat_robust, p_val_robust =
-        compute_robust_fstat(coef_full, vcov_matrix, has_int, dof_residual)
+    F_stat_robust,
+    p_val_robust = compute_robust_fstat(coef_full, vcov_matrix, has_int, dof_residual)
 
     # Default vcov estimator (HC1)
     default_vcov = CovarianceMatrices.HC1()
@@ -522,7 +522,8 @@ function fit_kclass_estimator(
     ## Return IVEstimator
     ##############################################################################
 
-    return IVEstimator{T,typeof(estimator),typeof(default_vcov),typeof(postestimation_data)}(
+    return IVEstimator{
+        T, typeof(estimator), typeof(default_vcov), typeof(postestimation_data)}(
         estimator,  # Store the actual estimator (LIML, Fuller, KClass)
         coef,
         esample_final,
@@ -557,7 +558,7 @@ function fit_kclass_estimator(
         F_first_stage_robust,
         p_first_stage_robust,
         F_kp_joint,
-        p_kp_joint,
+        p_kp_joint
     )
 end
 

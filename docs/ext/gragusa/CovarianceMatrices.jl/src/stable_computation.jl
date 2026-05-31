@@ -21,16 +21,16 @@ For unscaled inputs (H and G are sums, not averages):
 V = inv(M)
 """
 function _compute_mle_information(
-    M::AbstractMatrix;
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    warn::Bool = true,
+        M::AbstractMatrix;
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        warn::Bool = true
 )
     # Set default tolerances
     atol = cond_atol === nothing ? 0.0 : cond_atol
-    rtol_val =
-        cond_rtol === nothing ? (eps(real(float(eltype(M)))) * min(size(M)...)) : cond_rtol
+    rtol_val = cond_rtol === nothing ? (eps(real(float(eltype(M)))) * min(size(M)...)) :
+               cond_rtol
 
     # Force warn=true when debug=true
     warn = debug || warn
@@ -43,7 +43,7 @@ function _compute_mle_information(
         svals,
         "$(size(M))",
         debug,
-        warn,
+        warn
     )
 
     return Minv
@@ -61,17 +61,17 @@ For unscaled inputs:
 The formula is: V = inv(H) * Ω * inv(H)
 """
 function _compute_mle_misspecified(
-    H::AbstractMatrix,
-    Ω::AbstractMatrix;
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    warn::Bool = true,
+        H::AbstractMatrix,
+        Ω::AbstractMatrix;
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        warn::Bool = true
 )
     # Set default tolerances
     atol = cond_atol === nothing ? 0.0 : cond_atol
-    rtol_val =
-        cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) : cond_rtol
+    rtol_val = cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) :
+               cond_rtol
 
     # Force warn=true when debug=true
     warn = debug || warn
@@ -100,17 +100,17 @@ For unscaled inputs:
 The formula is: V = inv(G' * inv(Ω) * G)
 """
 function _compute_gmm_information(
-    G::AbstractMatrix,
-    Ω::AbstractMatrix;
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    warn::Bool = true,
+        G::AbstractMatrix,
+        Ω::AbstractMatrix;
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        warn::Bool = true
 )
     # Set default tolerances
     atol = cond_atol === nothing ? 0.0 : cond_atol
-    rtol_val =
-        cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) : cond_rtol
+    rtol_val = cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) :
+               cond_rtol
 
     # Force warn=true when debug=true
     warn = debug || warn
@@ -130,7 +130,7 @@ function _compute_gmm_information(
         svals_v,
         "$(size(G_omega_G))",
         debug,
-        warn,
+        warn
     )
 
     return V
@@ -153,18 +153,18 @@ For unscaled inputs:
 The formula is: V = inv(G'WG) * (G'WΩWG) * inv(G'WG)
 """
 function _compute_gmm_information_weighted(
-    G::AbstractMatrix,
-    Ω::AbstractMatrix,
-    W::AbstractMatrix;
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    warn::Bool = true,
+        G::AbstractMatrix,
+        Ω::AbstractMatrix,
+        W::AbstractMatrix;
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        warn::Bool = true
 )
     # Set default tolerances
     atol = cond_atol === nothing ? 0.0 : cond_atol
-    rtol_val =
-        cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) : cond_rtol
+    rtol_val = cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) :
+               cond_rtol
 
     # Force warn=true when debug=true
     warn = debug || warn
@@ -195,19 +195,19 @@ For unscaled inputs:
 - W: Optional weight matrix (if nothing, uses efficient weight inv(Ω))
 """
 function _compute_gmm_misspecified(
-    H::AbstractMatrix,
-    G::AbstractMatrix,
-    Ω::AbstractMatrix,
-    W::Union{Nothing,AbstractMatrix};
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    warn::Bool = true,
+        H::AbstractMatrix,
+        G::AbstractMatrix,
+        Ω::AbstractMatrix,
+        W::Union{Nothing, AbstractMatrix};
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        warn::Bool = true
 )
     # Set default tolerances
     atol = cond_atol === nothing ? 0.0 : cond_atol
-    rtol_val =
-        cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) : cond_rtol
+    rtol_val = cond_rtol === nothing ? (eps(real(float(eltype(Ω)))) * min(size(Ω)...)) :
+               cond_rtol
 
     # Force warn=true when debug=true
     warn = debug || warn
@@ -232,12 +232,12 @@ function _compute_gmm_misspecified(
 end
 
 function _debug_report_inversion(
-    matrix_name::String,
-    flag::AbstractVector{Bool},
-    svals::Vector,
-    size_info::String,
-    debug::Bool,
-    warn::Bool,
+        matrix_name::String,
+        flag::AbstractVector{Bool},
+        svals::Vector,
+        size_info::String,
+        debug::Bool,
+        warn::Bool
 )
     if any(flag) && !isempty(svals)
         n_problematic = sum(flag)
@@ -262,9 +262,9 @@ function _debug_report_inversion(
 end
 
 function ipinv(
-    A::AbstractMatrix{T};
-    atol::Real = 0.0,
-    rtol::Real = (eps(real(float(oneunit(T)))) * min(size(A)...)) * iszero(atol),
+        A::AbstractMatrix{T};
+        atol::Real = 0.0,
+        rtol::Real = (eps(real(float(oneunit(T)))) * min(size(A)...)) * iszero(atol)
 ) where {T}
     m, n = size(A)
     Tout = typeof(zero(T) / sqrt(oneunit(T) + oneunit(T)))

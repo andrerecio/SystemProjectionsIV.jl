@@ -43,7 +43,7 @@ first_stage_F_robust(m)   # Robust Wald F-test
 first_stage_F_KP(m)       # Kleibergen-Paap rk Wald F-test
 ```
 """
-struct FirstStageFTest{T,K} <: AbstractTest
+struct FirstStageFTest{T, K} <: AbstractTest
     stat::T
     df1::Int
     df2::Int
@@ -151,7 +151,7 @@ fs.F_nonrobust       # Homoskedastic first-stage F-statistics
 fs.F_robust          # Robust first-stage F-statistics
 ```
 """
-struct FirstStageResult{T<:AbstractFloat}
+struct FirstStageResult{T <: AbstractFloat}
     endogenous_names::Vector{String}
     F_nonrobust::Vector{T}
     p_nonrobust::Vector{T}
@@ -195,7 +195,7 @@ fs.F_nonrobust           # non-robust F
 fs.F_robust              # robust F
 ```
 """
-struct FirstStageIV{T<:AbstractFloat,M<:OLSMatrixEstimator}
+struct FirstStageIV{T <: AbstractFloat, M <: OLSMatrixEstimator}
     models::Vector{M}
     endogenous_names::Vector{String}
     instrument_names::Vector{String}
@@ -215,15 +215,13 @@ function Base.show(io::IO, fs::FirstStageIV{T}) where {T}
 
     for (j, name) in enumerate(fs.endogenous_names)
         m = fs.models[j]
-        @printf(
-            io,
+        @printf(io,
             "  %-20s  R² = %.4f   F(nonrobust) = %.3f   F(%s) = %.3f\n",
             name,
             r2(m),
             fs.F_nonrobust[j],
             fs.vcov_type,
-            fs.F_robust[j]
-        )
+            fs.F_robust[j])
     end
 
     println(io, "─" ^ 60)
@@ -243,7 +241,7 @@ has_first_stage_data(fsd::FirstStageData) = !isempty(fsd.Pi)
 
 Create an empty FirstStageData sentinel.
 """
-function empty_first_stage_data(::Type{T}) where {T<:AbstractFloat}
+function empty_first_stage_data(::Type{T}) where {T <: AbstractFloat}
     FirstStageData{T}(
         Matrix{T}(undef, 0, 0),
         Matrix{T}(undef, 0, 0),
@@ -252,7 +250,7 @@ function empty_first_stage_data(::Type{T}) where {T<:AbstractFloat}
         0,
         Matrix{T}(undef, 0, 0),
         Matrix{T}(undef, 0, 0),
-        false,
+        false
     )
 end
 
@@ -284,8 +282,8 @@ struct PostEstimationDataIV{T}
     X_fitted::Matrix{T}         # Predicted/adjusted endogenous used for inference (X̂ for TSLS, Adj for K-class)
     X_original::Matrix{T}       # Original regressors [Xexo, Xendo]
     y::Vector{T}                # Response vector (demeaned if FE present)
-    crossx::Cholesky{T,Matrix{T}}
-    invXX::Symmetric{T,Matrix{T}}  # (X̂'X̂)^{-1}
+    crossx::Cholesky{T, Matrix{T}}
+    invXX::Symmetric{T, Matrix{T}}  # (X̂'X̂)^{-1}
     weights::AbstractWeights
     cluster_vars::NamedTuple
     basis_coef::BitVector
@@ -294,7 +292,7 @@ struct PostEstimationDataIV{T}
     kappa::T                    # NaN for TSLS
     # For leverage computation (AER formula)
     Z::Matrix{T}                # Instruments matrix
-    invZZ::Symmetric{T,Matrix{T}}  # (Z'Z)^{-1}
+    invZZ::Symmetric{T, Matrix{T}}  # (Z'Z)^{-1}
     # FE nesting detection fields
     fe_groups::Vector{Vector{Int}}   # One ref vector per FE dimension
     fe_names::Vector{Symbol}          # Names of FE variables
@@ -327,7 +325,8 @@ one of `TSLS()`, `LIML()`, etc.
 iv(TSLS(), df, @formula(y ~ x + (endo ~ instrument)))
 ```
 """
-struct IVEstimator{T,E<:AbstractIVEstimator,V,P<:Union{PostEstimationDataIV{T},Nothing}} <:
+struct IVEstimator{
+    T, E <: AbstractIVEstimator, V, P <: Union{PostEstimationDataIV{T}, Nothing}} <:
        AbstractRegressModel
     estimator::E  # Which IV estimator was used
 
@@ -344,10 +343,10 @@ struct IVEstimator{T,E<:AbstractIVEstimator,V,P<:Union{PostEstimationDataIV{T},N
     fekeys::Vector{Symbol}
 
     coefnames::Vector{String}       # Name of coefficients
-    responsename::Union{String,Symbol} # Name of dependent variable
+    responsename::Union{String, Symbol} # Name of dependent variable
     formula::FormulaTerm        # Original formula
     formula_schema::FormulaTerm # Schema for predict
-    contrasts::Dict{Symbol,Any}
+    contrasts::Dict{Symbol, Any}
 
     nobs::Int64             # Number of observations
     dof::Int64              # Number parameters estimated - has_intercept. Used for p-value of F-stat.
@@ -363,7 +362,7 @@ struct IVEstimator{T,E<:AbstractIVEstimator,V,P<:Union{PostEstimationDataIV{T},N
 
     # Variance-covariance estimator and precomputed statistics
     vcov_estimator::V                        # Deep copy of the estimator
-    vcov_matrix::Symmetric{T,Matrix{T}}    # Precomputed vcov matrix
+    vcov_matrix::Symmetric{T, Matrix{T}}    # Precomputed vcov matrix
     se::Vector{T}                            # Standard errors
     t_stats::Vector{T}                       # t-statistics
     p_values::Vector{T}                      # p-values
@@ -645,13 +644,13 @@ end
 Compute the asymptotic variance matrix for IV estimation.
 """
 function _CM.aVar(
-    k::K,
-    m::IVEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:_CM.AbstractAsymptoticVarianceEstimator}
+        k::K,
+        m::IVEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: _CM.AbstractAsymptoticVarianceEstimator}
     isnothing(m.postestimation) && error("Model does not have post-estimation data stored.")
     !has_residuals_data(m) && error("Model does not have residuals stored.")
 
@@ -673,13 +672,13 @@ end
 
 # Disambiguating method for cluster-robust estimators
 function _CM.aVar(
-    k::K,
-    m::IVEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:_CM.CR}
+        k::K,
+        m::IVEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: _CM.CR}
     isnothing(m.postestimation) && error("Model does not have post-estimation data stored.")
     !has_residuals_data(m) && error("Model does not have residuals stored.")
 
@@ -742,8 +741,8 @@ vcov(:firm_id, :CR1, model)
 ```
 """
 function StatsBase.vcov(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::IVEstimator{T},
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::IVEstimator{T}
 ) where {T}
     isnothing(m.postestimation) && error(
         "Model does not have post-estimation data stored. Post-estimation vcov not available.",
@@ -783,7 +782,7 @@ function StatsBase.vcov(
     #   V = (n/(n-k)) * (n-k) * B * aVar * B = n * B * aVar * B
     #
     # So for HC1, scale = n (the DOF adjustment is already in aVar via residualadjustment)
-    scale = if ve isa Union{_CM.CR0,_CM.CR1,_CM.CR2,_CM.CR3}
+    scale = if ve isa Union{_CM.CR0, _CM.CR1, _CM.CR2, _CM.CR3}
         # Cluster-robust: use fixest-style correction
         _cluster_robust_scale_iv(ve, m, n)
     else
@@ -876,7 +875,7 @@ function _compute_nonnested_fe_dof_iv(m::IVEstimator, cluster_groups)
         # A FE is nested if it's nested in ANY cluster dimension
         is_nested = any(
             crefs -> _isnested_groups_iv(fe_groups[i], crefs, ngroups[i]),
-            cluster_refs_list,
+            cluster_refs_list
         )
         if !is_nested
             k_fe_nonnested += ngroups[i]
@@ -895,9 +894,9 @@ A FE is nested in a cluster if every FE group belongs to exactly one cluster gro
 This is the fixest definition of nesting.
 """
 function _isnested_groups_iv(
-    fe_refs::Vector{Int},
-    cluster_refs::Vector{Int},
-    n_fe_groups::Int,
+        fe_refs::Vector{Int},
+        cluster_refs::Vector{Int},
+        n_fe_groups::Int
 )
     entries = zeros(Int, n_fe_groups)
     @inbounds for i in eachindex(fe_refs, cluster_refs)
@@ -963,7 +962,8 @@ function _lookup_cluster_vecs_iv(cluster_syms::Tuple{Vararg{Symbol}}, m::IVEstim
             haskey(m.postestimation.cluster_vars, name) ||
                 _cluster_not_found_error(name, m)
             m.postestimation.cluster_vars[name]
-        end for name in cluster_syms
+        end
+    for name in cluster_syms
     )
 end
 
@@ -980,9 +980,9 @@ vcov(CR0(:firm_id, :year), model)  # multi-way
 ```
 """
 function CovarianceMatrices.vcov(
-    v::CovarianceMatrices.CR0{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        v::CovarianceMatrices.CR0{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(v.g, m)
     return vcov(CovarianceMatrices.CR0(cluster_vecs), m)
 end
@@ -1000,9 +1000,9 @@ vcov(CR1(:firm_id, :year), model)  # multi-way
 ```
 """
 function CovarianceMatrices.vcov(
-    v::CovarianceMatrices.CR1{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        v::CovarianceMatrices.CR1{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(v.g, m)
     return vcov(CovarianceMatrices.CR1(cluster_vecs), m)
 end
@@ -1013,9 +1013,9 @@ end
 Compute cluster-robust variance with CR2 (leverage-adjusted) estimator using stored cluster variable(s).
 """
 function CovarianceMatrices.vcov(
-    v::CovarianceMatrices.CR2{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        v::CovarianceMatrices.CR2{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(v.g, m)
     return vcov(CovarianceMatrices.CR2(cluster_vecs), m)
 end
@@ -1026,9 +1026,9 @@ end
 Compute cluster-robust variance with CR3 (squared leverage) estimator using stored cluster variable(s).
 """
 function CovarianceMatrices.vcov(
-    v::CovarianceMatrices.CR3{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        v::CovarianceMatrices.CR3{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(v.g, m)
     return vcov(CovarianceMatrices.CR3(cluster_vecs), m)
 end
@@ -1039,8 +1039,8 @@ end
 Compute standard errors using a specified variance estimator.
 """
 function StatsBase.stderror(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::IVEstimator,
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::IVEstimator
 )
     return sqrt.(diag(vcov(ve, m)))
 end
@@ -1052,9 +1052,8 @@ end
 ##############################################################################
 
 function _cluster_not_found_error(cluster_name::Symbol, m::IVEstimator)
-    available =
-        isempty(m.postestimation.cluster_vars) ? "none" :
-        join(keys(m.postestimation.cluster_vars), ", :")
+    available = isempty(m.postestimation.cluster_vars) ? "none" :
+                join(keys(m.postestimation.cluster_vars), ", :")
     error("\n    Cluster variable :$cluster_name not found in model.
 
     Available cluster variables: :$available
@@ -1078,33 +1077,33 @@ Resolve CR estimator with symbols to CR estimator with actual cluster vectors.
 For non-CR or CR with actual data, returns vcov_type unchanged.
 """
 function _resolve_cr_vcov(
-    vcov_type::CovarianceMatrices.CR0{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        vcov_type::CovarianceMatrices.CR0{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(vcov_type.g, m)
     return CovarianceMatrices.CR0(cluster_vecs)
 end
 
 function _resolve_cr_vcov(
-    vcov_type::CovarianceMatrices.CR1{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        vcov_type::CovarianceMatrices.CR1{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(vcov_type.g, m)
     return CovarianceMatrices.CR1(cluster_vecs)
 end
 
 function _resolve_cr_vcov(
-    vcov_type::CovarianceMatrices.CR2{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        vcov_type::CovarianceMatrices.CR2{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(vcov_type.g, m)
     return CovarianceMatrices.CR2(cluster_vecs)
 end
 
 function _resolve_cr_vcov(
-    vcov_type::CovarianceMatrices.CR3{T},
-    m::IVEstimator,
-) where {T<:Tuple{Vararg{Symbol}}}
+        vcov_type::CovarianceMatrices.CR3{T},
+        m::IVEstimator
+) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs_iv(vcov_type.g, m)
     return CovarianceMatrices.CR3(cluster_vecs)
 end
@@ -1138,7 +1137,7 @@ function recompute_first_stage_fstat(m::IVEstimator{T}, vcov_type) where {T}
         dof(m),
         dof_fes_val;
         Xendo_orig = fsd.Xendo_orig,
-        newZ = fsd.newZ,
+        newZ = fsd.newZ
     )
 end
 
@@ -1192,7 +1191,7 @@ model_cr1 = model_cr + vcov(CR1(:firm))
 
 See also: [`VcovSpec`](@ref)
 """
-function Base.:+(m::IVEstimator{T,E,V1,P}, v::VcovSpec{V2}) where {T,E,V1,P,V2}
+function Base.:+(m::IVEstimator{T, E, V1, P}, v::VcovSpec{V2}) where {T, E, V1, P, V2}
     # Compute vcov matrix using StatsBase.vcov (which dispatches to IVModel.jl methods)
     vcov_mat = StatsBase.vcov(v.source, m)
 
@@ -1206,7 +1205,7 @@ function Base.:+(m::IVEstimator{T,E,V1,P}, v::VcovSpec{V2}) where {T,E,V1,P,V2}
     vcov_copy = deepcopy_vcov(v.source)
 
     # Return new IVEstimator with same data but different vcov type
-    return IVEstimator{T,E,V2,P}(
+    return IVEstimator{T, E, V2, P}(
         m.estimator,
         m.coef,
         m.esample,
@@ -1241,7 +1240,7 @@ function Base.:+(m::IVEstimator{T,E,V1,P}, v::VcovSpec{V2}) where {T,E,V1,P,V2}
         F_first_stage_robust,
         p_first_stage_robust,
         m.F_kp,
-        m.p_kp,  # KP stat doesn't change with vcov
+        m.p_kp  # KP stat doesn't change with vcov
     )
 end
 
@@ -1269,24 +1268,24 @@ function first_stage_F_iid(m::IVEstimator{T}) where {T}
     end
 
     if length(F_vec) == 1
-        return FirstStageFTest{T,Homoskedastic}(
+        return FirstStageFTest{T, Homoskedastic}(
             F_vec[1],
             df1,
             df2,
             p_vec[1],
             :iid,
             Homoskedastic(),
-            endo_names,
+            endo_names
         )
     else
-        return FirstStageFTest{Vector{T},Homoskedastic}(
+        return FirstStageFTest{Vector{T}, Homoskedastic}(
             F_vec,
             df1,
             df2,
             p_vec,
             :iid,
             Homoskedastic(),
-            endo_names,
+            endo_names
         )
     end
 end
@@ -1311,24 +1310,24 @@ function first_stage_F_robust(m::IVEstimator{T}) where {T}
     vcov_est = m.vcov_estimator
 
     if length(F_vec) == 1
-        return FirstStageFTest{T,typeof(vcov_est)}(
+        return FirstStageFTest{T, typeof(vcov_est)}(
             F_vec[1],
             df1,
             df2,
             p_vec[1],
             :robust,
             vcov_est,
-            endo_names,
+            endo_names
         )
     else
-        return FirstStageFTest{Vector{T},typeof(vcov_est)}(
+        return FirstStageFTest{Vector{T}, typeof(vcov_est)}(
             F_vec,
             df1,
             df2,
             p_vec,
             :robust,
             vcov_est,
-            endo_names,
+            endo_names
         )
     end
 end
@@ -1353,14 +1352,14 @@ function first_stage_F_KP(m::IVEstimator{T}) where {T}
     end
 
     # KP is asymptotically χ²(df)/ℓ, use df2=0 to signal asymptotic
-    return FirstStageFTest{T,typeof(m.vcov_estimator)}(
+    return FirstStageFTest{T, typeof(m.vcov_estimator)}(
         m.F_kp,
         n_excl,
         0,
         m.p_kp,
         :kp,
         m.vcov_estimator,
-        endo_names,
+        endo_names
     )
 end
 
@@ -1411,7 +1410,7 @@ function first_stage(m::IVEstimator{T}) where {T}
         df2,
         length(endogenous_names),
         size(fsd.Z_res, 2),
-        vcov_name,
+        vcov_name
     )
 end
 
@@ -1439,20 +1438,16 @@ function Base.show(io::IO, fs::FirstStageResult{T}) where {T}
     for (j, name) in enumerate(fs.endogenous_names)
         display_name = length(name) > 28 ? name[1:25] * "..." : name
         @printf(io, "% -30s\n", display_name)
-        @printf(
-            io,
+        @printf(io,
             "  %-22s %14.4f %14.4f\n",
             "F[nonrobust] (P-value)",
             fs.F_nonrobust[j],
-            fs.p_nonrobust[j]
-        )
-        @printf(
-            io,
+            fs.p_nonrobust[j])
+        @printf(io,
             "  %-22s %14.4f %14.4f\n",
             "F[$(fs.vcov_type)] (P-value)",
             fs.F_robust[j],
-            fs.p_robust[j]
-        )
+            fs.p_robust[j])
     end
 
     println_horizontal_line(io, totwidth)
@@ -1465,7 +1460,7 @@ function Base.show(io::IO, ::MIME"text/html", fs::FirstStageResult{T}) where {T}
     html_table_start(
         io;
         class = "regress-table regress-first-stage",
-        caption = "First-Stage Diagnostics ($(fs.vcov_type))",
+        caption = "First-Stage Diagnostics ($(fs.vcov_type))"
     )
 
     # Per-endogenous section
@@ -1473,7 +1468,7 @@ function Base.show(io::IO, ::MIME"text/html", fs::FirstStageResult{T}) where {T}
     html_row(
         io,
         ["Endogenous", "F(nonrobust)", "P-value", "F($(fs.vcov_type))", "P-value"];
-        is_header = true,
+        is_header = true
     )
     html_thead_end(io)
     html_tbody_start(io; class = "regress-per-endo-body")
@@ -1485,8 +1480,8 @@ function Base.show(io::IO, ::MIME"text/html", fs::FirstStageResult{T}) where {T}
                 format_number(fs.F_nonrobust[j]),
                 format_pvalue(fs.p_nonrobust[j]),
                 format_number(fs.F_robust[j]),
-                format_pvalue(fs.p_robust[j]),
-            ],
+                format_pvalue(fs.p_robust[j])
+            ]
         )
     end
     html_tbody_end(io)
@@ -1500,8 +1495,8 @@ function Base.show(io::IO, ::MIME"text/html", fs::FirstStageResult{T}) where {T}
             "",
             "",
             "",
-            "",
-        ],
+            ""
+        ]
     )
     html_tfoot_end(io)
 
@@ -1514,10 +1509,10 @@ end
 ##
 ##############################################################################
 function StatsModels.apply_schema(
-    t::FormulaTerm,
-    schema::StatsModels.Schema,
-    Mod::Type{<:IVEstimator},
-    has_fe_intercept,
+        t::FormulaTerm,
+        schema::StatsModels.Schema,
+        Mod::Type{<:IVEstimator},
+        has_fe_intercept
 )
     schema = StatsModels.FullRank(schema)
     if has_fe_intercept
@@ -1525,7 +1520,7 @@ function StatsModels.apply_schema(
     end
     FormulaTerm(
         apply_schema(t.lhs, schema.schema, StatisticalModel),
-        StatsModels.collect_matrix_terms(apply_schema(t.rhs, schema, StatisticalModel)),
+        StatsModels.collect_matrix_terms(apply_schema(t.rhs, schema, StatisticalModel))
     )
 end
 
@@ -1571,25 +1566,21 @@ function top(m::IVEstimator)
     end
 
     # Always show first-stage diagnostics for IV models
-    fs_nonrobust =
-        isempty(m.F_first_stage_nonrobust) ? eltype(m.coef)(NaN) :
-        minimum(m.F_first_stage_nonrobust)
-    fs_robust =
-        isempty(m.F_first_stage_robust) ? eltype(m.coef)(NaN) :
-        minimum(m.F_first_stage_robust)
+    fs_nonrobust = isempty(m.F_first_stage_nonrobust) ? eltype(m.coef)(NaN) :
+                   minimum(m.F_first_stage_nonrobust)
+    fs_robust = isempty(m.F_first_stage_robust) ? eltype(m.coef)(NaN) :
+                minimum(m.F_first_stage_robust)
     out = vcat(
         out,
-        [
-            "F (1st stage, nonrobust)" sprint(show, fs_nonrobust, context = :compact => true);
-            "F (1st stage, $(vcov_type_name(m.vcov_estimator)))" sprint(show, fs_robust, context = :compact => true);
-        ],
+        ["F (1st stage, nonrobust)" sprint(show, fs_nonrobust, context = :compact => true);
+         "F (1st stage, $(vcov_type_name(m.vcov_estimator)))" sprint(show, fs_robust, context = :compact => true);]
     )
 
     # Add Iterations if FE
     if has_fe(m)
         out = vcat(
             out,
-            ["Iterations" sprint(show, m.iterations, context = :compact => true);],
+            ["Iterations" sprint(show, m.iterations, context = :compact => true);]
         )
     end
     return out
@@ -1614,13 +1605,12 @@ function Base.show(io::IO, m::IVEstimator)
     if length(rownms) == 0
         rownms = [lpad("[$i]", floor(Integer, log10(nr)) + 3) for i in 1:nr]
     end
-    mat = [
-        j == 1 ? NoQuote(rownms[i]) :
-        j - 1 == ct.pvalcol ? NoQuote(sprint(show, PValue(cols[j - 1][i]))) :
-        j - 1 in ct.teststatcol ? TestStat(cols[j - 1][i]) :
-        cols[j - 1][i] isa AbstractString ? NoQuote(cols[j - 1][i]) : cols[j - 1][i] for
-        i in 1:nr, j in 1:(nc + 1)
-    ]
+    mat = [j == 1 ? NoQuote(rownms[i]) :
+           j - 1 == ct.pvalcol ? NoQuote(sprint(show, PValue(cols[j - 1][i]))) :
+           j - 1 in ct.teststatcol ? TestStat(cols[j - 1][i]) :
+           cols[j - 1][i] isa AbstractString ? NoQuote(cols[j - 1][i]) : cols[j - 1][i]
+           for
+           i in 1:nr, j in 1:(nc + 1)]
     io = IOContext(io, :compact => true, :limit => false)
     A = Base.alignment(
         io,
@@ -1629,13 +1619,11 @@ function Base.show(io::IO, m::IVEstimator)
         1:size(mat, 2),
         typemax(Int),
         typemax(Int),
-        3,
+        3
     )
     nmswidths = pushfirst!(length.(colnms), 0)
-    A = [
-        nmswidths[i] > sum(A[i]) ? (A[i][1] + nmswidths[i] - sum(A[i]), A[i][2]) : A[i]
-        for i in 1:length(A)
-    ]
+    A = [nmswidths[i] > sum(A[i]) ? (A[i][1] + nmswidths[i] - sum(A[i]), A[i][2]) : A[i]
+         for i in 1:length(A)]
     totwidth = compute_table_width(A, colnms)
 
     # Title: estimator name, right-aligned, yellow
@@ -1645,8 +1633,8 @@ function Base.show(io::IO, m::IVEstimator)
             io,
             lpad(
                 ANSI_YELLOW * ctitle * ANSI_RESET,
-                totwidth - 2 + length(ANSI_YELLOW) + length(ANSI_RESET),
-            ),
+                totwidth - 2 + length(ANSI_YELLOW) + length(ANSI_RESET)
+            )
         )
     else
         print(io, lpad(ctitle, totwidth - 2))
@@ -1740,8 +1728,8 @@ function Base.show(io::IO, ::MIME"text/html", m::IVEstimator)
             "",
             "",
             "",
-            "",
-        ],
+            ""
+        ]
     )
     html_tfoot_end(io)
 
@@ -1757,8 +1745,8 @@ function StatsAPI.predict(m::IVEstimator, data)
 
     has_cont_fe_interaction(m.formula) && throw(
         ArgumentError(
-            "Interaction of fixed effect and continuous variable detected in formula; this is currently not supported in `predict`",
-        ),
+        "Interaction of fixed effect and continuous variable detected in formula; this is currently not supported in `predict`",
+    ),
     )
 
     cdata = Tables.columntable(data)
@@ -1772,23 +1760,23 @@ end
 
 # Type-stable inner function for IV predict
 function _predict_iv_impl(
-    Xnew::AbstractMatrix,
-    coef_vec::AbstractVector{T},
-    nonmissings::AbstractVector{Bool},
-    m::IVEstimator,
-    data,
-    ::Type{T},
+        Xnew::AbstractMatrix,
+        coef_vec::AbstractVector{T},
+        nonmissings::AbstractVector{Bool},
+        m::IVEstimator,
+        data,
+        ::Type{T}
 ) where {T}
     n = length(nonmissings)
     # Always allocate with Union type for consistent return type
-    out = Vector{Union{T,Missing}}(missing, n)
+    out = Vector{Union{T, Missing}}(missing, n)
     @views out[nonmissings] .= Xnew * coef_vec
 
     if has_fe(m)
         nrow(fe(m)) > 0 || throw(
             ArgumentError(
-                "Model has no estimated fixed effects. To store estimates of fixed effects, run `iv` with the option save = :fe",
-            ),
+            "Model has no estimated fixed effects. To store estimates of fixed effects, run `iv` with the option save = :fe",
+        ),
         )
 
         df = DataFrame(data; copycols = false)
@@ -1798,7 +1786,7 @@ function _predict_iv_impl(
             on = m.fekeys,
             makeunique = true,
             matchmissing = :equal,
-            order = :left,
+            order = :left
         )
         fes = combine(fes, AsTable(Not(m.fekeys)) => sum)
 
@@ -1826,15 +1814,15 @@ end
 
 # Type-stable inner function for IV residuals
 function _residuals_iv_impl(
-    y::AbstractVector,
-    Xnew::AbstractMatrix,
-    coef_vec::AbstractVector{T},
-    nonmissings::AbstractVector{Bool},
-    ::Type{T},
+        y::AbstractVector,
+        Xnew::AbstractMatrix,
+        coef_vec::AbstractVector{T},
+        nonmissings::AbstractVector{Bool},
+        ::Type{T}
 ) where {T}
     n = length(nonmissings)
     # Always allocate with Union type for consistent return type
-    out = Vector{Union{T,Missing}}(missing, n)
+    out = Vector{Union{T, Missing}}(missing, n)
     @views out[nonmissings] .= y .- Xnew * coef_vec
     return out
 end
@@ -1850,7 +1838,7 @@ function StatsAPI.residuals(m::IVEstimator{T}) where {T}
     end
     # Reconstruct full-length residuals with missings for non-esample rows
     n = length(m.esample)
-    out = Vector{Union{T,Missing}}(missing, n)
+    out = Vector{Union{T, Missing}}(missing, n)
     out[m.esample] .= m.residuals_esample
     return out
 end
@@ -1896,7 +1884,7 @@ function StatsAPI.coeftable(m::IVEstimator; level = 0.95)
         hcat(cc, se, tt, pv, conf_int[:, 1:2]),
         ["Estimate", "Std. Error", "t-stat", "Pr(>|t|)", "Lower 95%", "Upper 95%"],
         ["$(coefnms[i])" for i in 1:length(cc)],
-        4,
+        4
     )
 end
 
@@ -1920,7 +1908,7 @@ Stores data needed for post-estimation variance computation in matrix-based IV.
 - `invXhatXhat::Matrix{T}`: (X̂'X̂)⁻¹ for sandwich formula
 - `n_endogenous::Int`: Number of endogenous variables
 """
-struct PostEstimationDataIVMatrix{T<:AbstractFloat}
+struct PostEstimationDataIVMatrix{T <: AbstractFloat}
     X::Matrix{T}
     Z::Matrix{T}
     X_hat::Matrix{T}
@@ -1965,7 +1953,7 @@ coef(model)
 vcov(HC1(), model)
 ```
 """
-struct IVMatrixEstimator{T<:AbstractFloat,V} <: AbstractRegressModel
+struct IVMatrixEstimator{T <: AbstractFloat, V} <: AbstractRegressModel
     coef::Vector{T}
     postestimation::PostEstimationDataIVMatrix{T}
     basis_coef::BitVector
@@ -1979,7 +1967,7 @@ struct IVMatrixEstimator{T<:AbstractFloat,V} <: AbstractRegressModel
 
     # Variance-covariance
     vcov_estimator::V
-    vcov_matrix::Symmetric{T,Matrix{T}}
+    vcov_matrix::Symmetric{T, Matrix{T}}
     se::Vector{T}
     t_stats::Vector{T}
     p_values::Vector{T}
@@ -2117,13 +2105,13 @@ end
 
 # aVar for CR (cluster-robust) estimators - disambiguating method
 function _CM.aVar(
-    k::K,
-    m::IVMatrixEstimator{T};
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:_CM.CR,T}
+        k::K,
+        m::IVMatrixEstimator{T};
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: _CM.CR, T}
     # Compute adjusted moment matrix: X̂ .* e
     X_hat = m.postestimation.X_hat
     resid = m.postestimation.residuals
@@ -2136,13 +2124,13 @@ end
 
 # aVar for HC-type estimators
 function _CM.aVar(
-    k::K,
-    m::IVMatrixEstimator{T};
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:_CM.AbstractAsymptoticVarianceEstimator,T}
+        k::K,
+        m::IVMatrixEstimator{T};
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: _CM.AbstractAsymptoticVarianceEstimator, T}
     # Compute adjusted moment matrix: X̂ .* (u .* e)
     # where u is the residual adjustment factor
     X_hat = m.postestimation.X_hat
@@ -2165,8 +2153,8 @@ end
 Compute robust variance-covariance matrix for IV matrix estimator.
 """
 function StatsBase.vcov(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::IVMatrixEstimator{T},
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::IVMatrixEstimator{T}
 ) where {T}
     n = nobs(m)
     B = bread(m)
@@ -2187,8 +2175,8 @@ function StatsBase.vcov(
 end
 
 function StatsBase.stderror(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::IVMatrixEstimator,
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::IVMatrixEstimator
 )
     V = vcov(ve, m)
     return sqrt.(diag(V))
@@ -2203,7 +2191,7 @@ end
 
 Create a new IVMatrixEstimator with updated variance-covariance estimator.
 """
-function Base.:+(m::IVMatrixEstimator{T,V1}, v::VcovSpec{V2}) where {T,V1,V2}
+function Base.:+(m::IVMatrixEstimator{T, V1}, v::VcovSpec{V2}) where {T, V1, V2}
     new_vcov = vcov(v.source, m)
     new_se = sqrt.(diag(new_vcov))
 
@@ -2212,7 +2200,7 @@ function Base.:+(m::IVMatrixEstimator{T,V1}, v::VcovSpec{V2}) where {T,V1,V2}
     new_t = cc ./ new_se
     new_p = 2 .* tdistccdf.(dof_residual(m), abs.(new_t))
 
-    return IVMatrixEstimator{T,V2}(
+    return IVMatrixEstimator{T, V2}(
         m.coef,
         m.postestimation,
         m.basis_coef,
@@ -2227,7 +2215,7 @@ function Base.:+(m::IVMatrixEstimator{T,V1}, v::VcovSpec{V2}) where {T,V1,V2}
         new_vcov,
         new_se,
         new_t,
-        new_p,
+        new_p
     )
 end
 
@@ -2261,9 +2249,9 @@ fs.F_robust              # robust F
 ```
 """
 function first_stage(
-    m::IVMatrixEstimator{T};
-    endogenous_names::Union{Vector{String},Nothing} = nothing,
-    instrument_names::Union{Vector{String},Nothing} = nothing,
+        m::IVMatrixEstimator{T};
+        endogenous_names::Union{Vector{String}, Nothing} = nothing,
+        instrument_names::Union{Vector{String}, Nothing} = nothing
 ) where {T}
     pe = m.postestimation
     n_endo = pe.n_endogenous
@@ -2280,8 +2268,8 @@ function first_stage(
     Z_instr = Z[:, (k_exo + 1):end]
 
     # Default names
-    endo_names =
-        endogenous_names === nothing ? ["endo_$i" for i in 1:n_endo] : endogenous_names
+    endo_names = endogenous_names === nothing ? ["endo_$i" for i in 1:n_endo] :
+                 endogenous_names
     instr_names = instrument_names === nothing ? ["inst_$i" for i in 1:K] : instrument_names
 
     # Step 1: Run first-stage OLS regressions (xendo_j on full Z)
@@ -2329,7 +2317,8 @@ function first_stage(
     end
 
     # Step 5: Robust F per endogenous variable using the model's current vcov
-    F_robust, p_robust = compute_per_endogenous_fstats(
+    F_robust,
+    p_robust = compute_per_endogenous_fstats(
         Xendo_res,
         Z_res,
         Pi,
@@ -2338,10 +2327,10 @@ function first_stage(
         k_total,
         0;
         Xendo_orig = Xendo,
-        newZ = Z,
+        newZ = Z
     )
 
-    return FirstStageIV{T,eltype(fs_models)}(
+    return FirstStageIV{T, eltype(fs_models)}(
         fs_models,
         endo_names,
         instr_names,
@@ -2351,7 +2340,7 @@ function first_stage(
         p_robust,
         K,
         dof_omega,
-        string(typeof(m.vcov_estimator).name.name),
+        string(typeof(m.vcov_estimator).name.name)
     )
 end
 

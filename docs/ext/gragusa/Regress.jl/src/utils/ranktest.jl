@@ -28,14 +28,14 @@ Compute the Kleibergen-Paap rk statistic for testing weak instruments.
 - `r_kp`: The Kleibergen-Paap rk statistic
 """
 function ranktest(
-    Xendo_res::Matrix{T},
-    Z_res::Matrix{T},
-    Pi::Matrix{T},
-    vcov_type,
-    nobs::Int,
-    dof_small::Int,
-    dof_fes::Int,
-) where {T<:AbstractFloat}
+        Xendo_res::Matrix{T},
+        Z_res::Matrix{T},
+        Pi::Matrix{T},
+        vcov_type,
+        nobs::Int,
+        dof_small::Int,
+        dof_fes::Int
+) where {T <: AbstractFloat}
     k = size(Xendo_res, 2)  # Number of endogenous variables
     l = size(Z_res, 2)      # Number of excluded instruments
 
@@ -162,12 +162,12 @@ end
 Compute the meat of the sandwich estimator for the rank test.
 """
 function _compute_meat(
-    moment_matrix::Matrix{T},
-    vcov_type,
-    nobs::Int,
-    dof_small::Int,
-    dof_fes::Int,
-) where {T<:AbstractFloat}
+        moment_matrix::Matrix{T},
+        vcov_type,
+        nobs::Int,
+        dof_small::Int,
+        dof_fes::Int
+) where {T <: AbstractFloat}
     n = size(moment_matrix, 1)
 
     if vcov_type isa CovarianceMatrices.HR0
@@ -178,7 +178,7 @@ function _compute_meat(
         dof_residual = max(1, n - dof_small - dof_fes)
         scale = n / dof_residual
         return scale * (moment_matrix' * moment_matrix)
-    elseif vcov_type isa Union{CovarianceMatrices.CR0,CovarianceMatrices.CR1}
+    elseif vcov_type isa Union{CovarianceMatrices.CR0, CovarianceMatrices.CR1}
         # Cluster-robust - vcov_type.g[1] is a Clustering struct
         clustering = vcov_type.g[1]
         groups = clustering.groups       # Vector{Int}, 1-indexed
@@ -221,14 +221,14 @@ Returns (F_kp, p_kp) where:
 - p_kp is the p-value from chi-squared distribution
 """
 function compute_first_stage_fstat(
-    Xendo_res::Matrix{T},
-    Z_res::Matrix{T},
-    Pi::Matrix{T},
-    vcov_type,
-    nobs::Int,
-    dof_small::Int,
-    dof_fes::Int,
-) where {T<:AbstractFloat}
+        Xendo_res::Matrix{T},
+        Z_res::Matrix{T},
+        Pi::Matrix{T},
+        vcov_type,
+        nobs::Int,
+        dof_small::Int,
+        dof_fes::Int
+) where {T <: AbstractFloat}
     k = size(Xendo_res, 2)  # Number of endogenous variables
     l = size(Z_res, 2)      # Number of excluded instruments
 
@@ -286,16 +286,16 @@ For each endogenous variable j:
 - `(F_stats, p_values)`: Vectors of F-statistics and p-values, one per endogenous variable
 """
 function compute_per_endogenous_fstats(
-    Xendo_res::Matrix{T},
-    Z_res::Matrix{T},
-    Pi::Matrix{T},
-    vcov_type,
-    nobs::Int,
-    dof_small::Int,
-    dof_fes::Int;
-    Xendo_orig::Union{Matrix{T},Nothing} = nothing,
-    newZ::Union{Matrix{T},Nothing} = nothing,
-) where {T<:AbstractFloat}
+        Xendo_res::Matrix{T},
+        Z_res::Matrix{T},
+        Pi::Matrix{T},
+        vcov_type,
+        nobs::Int,
+        dof_small::Int,
+        dof_fes::Int;
+        Xendo_orig::Union{Matrix{T}, Nothing} = nothing,
+        newZ::Union{Matrix{T}, Nothing} = nothing
+) where {T <: AbstractFloat}
     l = size(Z_res, 2)      # Number of excluded instruments
 
     if !isnothing(Xendo_orig) && !isnothing(newZ)
@@ -303,9 +303,9 @@ function compute_per_endogenous_fstats(
     else
         throw(
             ArgumentError(
-                "compute_per_endogenous_fstats requires Xendo_orig and newZ; " *
-                "these must be provided from FirstStageData",
-            ),
+            "compute_per_endogenous_fstats requires Xendo_orig and newZ; " *
+            "these must be provided from FirstStageData",
+        ),
         )
     end
 end
@@ -331,12 +331,12 @@ CovarianceMatrices sandwich formula.
 - `(F_stats, p_values)`: Vectors of F-statistics and p-values, one per endogenous
 """
 function _compute_first_stage_fstats_via_ols(
-    newZ::Matrix{T},
-    Xendo::Matrix{T},
-    n_instruments::Int,
-    vcov_type,
-    dof_fes::Int,
-) where {T<:AbstractFloat}
+        newZ::Matrix{T},
+        Xendo::Matrix{T},
+        n_instruments::Int,
+        vcov_type,
+        dof_fes::Int
+) where {T <: AbstractFloat}
     n, k_total = size(newZ)
     k = size(Xendo, 2)
     l = n_instruments
@@ -382,7 +382,7 @@ function _compute_first_stage_fstats_via_ols(
         tss_j = sum(abs2, y_j .- mean(y_j))
         basis = trues(k_total)
 
-        fs_model = OLSMatrixEstimator{T,OLSPredictorChol{T},typeof(vcov_type)}(
+        fs_model = OLSMatrixEstimator{T, OLSPredictorChol{T}, typeof(vcov_type)}(
             rr,
             pp,
             basis,
@@ -397,7 +397,7 @@ function _compute_first_stage_fstats_via_ols(
             Symmetric(Matrix{T}(undef, k_total, k_total)),  # placeholder
             Vector{T}(undef, k_total),
             Vector{T}(undef, k_total),
-            Vector{T}(undef, k_total),
+            Vector{T}(undef, k_total)
         )
 
         # Use CovarianceMatrices to compute vcov — handles all HC/HAC/CR/EWC types

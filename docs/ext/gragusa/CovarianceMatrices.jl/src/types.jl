@@ -197,7 +197,7 @@ Truncated(Andrews)              # Andrews bandwidth selection (alternative synta
 
 **Note**: Provides consistent but not necessarily positive semi-definite estimates. `NeweyWest` bandwidth selection is not supported for Truncated kernel.
 """
-struct TruncatedKernel{G<:BandwidthType} <: HAC{G}
+struct TruncatedKernel{G <: BandwidthType} <: HAC{G}
     bw::Vector{WFLOAT}
     kw::Vector{WFLOAT}
     "When `wlock` is false, the kernelweights are allowed to updated by
@@ -241,7 +241,7 @@ Bartlett(NeweyWest)            # Newey-West bandwidth selection (alternative syn
 # NotesL
 - Equivalent to Newey-West estimator
 """
-struct BartlettKernel{G<:BandwidthType} <: HAC{G}
+struct BartlettKernel{G <: BandwidthType} <: HAC{G}
     bw::Vector{WFLOAT}
     kw::Vector{WFLOAT}
     wlock::Vector{Bool}
@@ -280,7 +280,7 @@ Parzen(Andrews)                # Andrews bandwidth selection (alternative syntax
 Parzen(NeweyWest)              # Newey-West bandwidth selection (alternative syntax)
 
 """
-struct ParzenKernel{G<:BandwidthType} <: HAC{G}
+struct ParzenKernel{G <: BandwidthType} <: HAC{G}
     bw::Vector{WFLOAT}
     kw::Vector{WFLOAT}
     wlock::Vector{Bool}
@@ -320,7 +320,7 @@ TukeyHanning(Andrews)           # Andrews bandwidth selection (alternative synta
 # Notes
 `NeweyWest` bandwidth selection is not supported for TukeyHanning kernel.
 """
-struct TukeyHanningKernel{G<:BandwidthType} <: HAC{G}
+struct TukeyHanningKernel{G <: BandwidthType} <: HAC{G}
     bw::Vector{WFLOAT}
     kw::Vector{WFLOAT}
     wlock::Vector{Bool}
@@ -359,7 +359,7 @@ QuadraticSpectral(Andrews)     # Andrews bandwidth selection (alternative syntax
 QuadraticSpectral(NeweyWest)   # Newey-West bandwidth selection (alternative syntax)
 
 """
-struct QuadraticSpectralKernel{G<:BandwidthType} <: HAC{G}
+struct QuadraticSpectralKernel{G <: BandwidthType} <: HAC{G}
     bw::Vector{WFLOAT}
     kw::Vector{WFLOAT}
     wlock::Vector{Bool}
@@ -383,8 +383,7 @@ const kernels = [:Bartlett, :Parzen, :QuadraticSpectral, :Truncated, :TukeyHanni
 
 for kerneltype in kernels
     @eval ($kerneltype(x::Number)) = ($kerneltype){Fixed}(WFLOAT[x], WFLOAT[], [false])
-    @eval ($kerneltype{Fixed}(x::Number)) =
-        ($kerneltype){Fixed}(WFLOAT[x], WFLOAT[], [false])
+    @eval ($kerneltype{Fixed}(x::Number)) = ($kerneltype){Fixed}(WFLOAT[x], WFLOAT[], [false])
 end
 
 for kerneltype in kernels
@@ -401,10 +400,10 @@ for kerneltype in kernels
     end
 end
 
-function Base.show(io::IO, x::HAC{T}) where {T<:Union{Andrews,NeweyWest}}
+function Base.show(io::IO, x::HAC{T}) where {T <: Union{Andrews, NeweyWest}}
     return print(typeof(x).name, "{", T, "}")
 end
-function Base.show(io::IO, x::HAC{T}) where {T<:Fixed}
+function Base.show(io::IO, x::HAC{T}) where {T <: Fixed}
     return print(typeof(x).name, "{", T, "}(", first(x.bw), ")")
 end
 ## Makes the default bandwidth selection
@@ -657,12 +656,12 @@ se_cr0_multi = stderror(CR0((firm_ids, year_ids)), model)
 """
 struct CR0{G} <: CR
     g::G
-    function CR0(g::G) where {G<:AbstractVector}
+    function CR0(g::G) where {G <: AbstractVector}
         t = (Clustering(g),)
         new{typeof(t)}(t)
     end
-    CR0(g::G) where {G<:Tuple{Vararg{Symbol}}} = new{G}(g)
-    function CR0(g::G) where {G<:Tuple}
+    CR0(g::G) where {G <: Tuple{Vararg{Symbol}}} = new{G}(g)
+    function CR0(g::G) where {G <: Tuple}
         t = map(Clustering, g)
         new{typeof(t)}(t)
     end
@@ -694,12 +693,12 @@ se_cr1_multi = stderror(CR1((firm_ids, year_ids)), model)
 """
 struct CR1{G} <: CR
     g::G
-    function CR1(g::G) where {G<:AbstractVector}
+    function CR1(g::G) where {G <: AbstractVector}
         t = (Clustering(g),)
         new{typeof(t)}(t)
     end
-    CR1(g::G) where {G<:Tuple{Vararg{Symbol}}} = new{G}(g)
-    function CR1(g::G) where {G<:Tuple}
+    CR1(g::G) where {G <: Tuple{Vararg{Symbol}}} = new{G}(g)
+    function CR1(g::G) where {G <: Tuple}
         t = map(Clustering, g)
         new{typeof(t)}(t)
     end
@@ -731,12 +730,12 @@ se_cr2_multi = stderror(CR2((firm_ids, year_ids)), model)
 """
 struct CR2{G} <: CR
     g::G
-    function CR2(g::G) where {G<:AbstractVector}
+    function CR2(g::G) where {G <: AbstractVector}
         t = (Clustering(g),)
         new{typeof(t)}(t)
     end
-    CR2(g::G) where {G<:Tuple{Vararg{Symbol}}} = new{G}(g)
-    function CR2(g::G) where {G<:Tuple}
+    CR2(g::G) where {G <: Tuple{Vararg{Symbol}}} = new{G}(g)
+    function CR2(g::G) where {G <: Tuple}
         t = map(Clustering, g)
         new{typeof(t)}(t)
     end
@@ -768,12 +767,12 @@ se_cr3_multi = stderror(CR3((firm_ids, year_ids)), model)
 """
 struct CR3{G} <: CR
     g::G
-    function CR3(g::G) where {G<:AbstractVector}
+    function CR3(g::G) where {G <: AbstractVector}
         t = (Clustering(g),)
         new{typeof(t)}(t)
     end
-    CR3(g::G) where {G<:Tuple{Vararg{Symbol}}} = new{G}(g)
-    function CR3(g::G) where {G<:Tuple}
+    CR3(g::G) where {G <: Tuple{Vararg{Symbol}}} = new{G}(g)
+    function CR3(g::G) where {G <: Tuple}
         t = map(Clustering, g)
         new{typeof(t)}(t)
     end
@@ -808,7 +807,7 @@ variance calculations. Used internally by `CachedCR`.
 Using a cache makes the variance calculation non-differentiable with AD.
 For AD compatibility, use the standard non-cached CR estimators.
 """
-struct CRCache{T<:Real}
+struct CRCache{T <: Real}
     X2_buffers::Vector{Matrix{T}}            # One buffer per combination
     S_buffer::Matrix{T}                       # Output buffer (ncols × ncols)
     grouped_arrays::Vector{Clustering}      # Precomputed for each combination
@@ -920,7 +919,7 @@ end
 
 See also: [`CR0`](@ref), [`CR1`](@ref), [`CR2`](@ref), [`CR3`](@ref), [`CRCache`](@ref)
 """
-struct CachedCR{K<:CR,C<:CRCache} <: CR
+struct CachedCR{K <: CR, C <: CRCache} <: CR
     estimator::K
     cache::C
 end
@@ -984,7 +983,7 @@ where only residuals change between iterations.
 Using this cache makes the variance calculation non-differentiable with AD.
 For AD compatibility, use the standard non-cached CR estimators.
 """
-struct CRModelCache{T<:Real,H}
+struct CRModelCache{T <: Real, H}
     grouped_arrays::Vector{Clustering}
     cluster_indices::Vector{Vector{Vector{Int}}}
     signs::Vector{Int}
@@ -1039,7 +1038,7 @@ end
 
 See also: [`CR2`](@ref), [`CR3`](@ref), [`CRModelCache`](@ref)
 """
-struct CachedCRModel{K<:CR,C<:CRModelCache}
+struct CachedCRModel{K <: CR, C <: CRModelCache}
     estimator::K
     cache::C
 end
@@ -1200,8 +1199,8 @@ struct DifferentOwnLags <: LagStrategy
     maxlags::Vector{Int}
 end
 
-DifferentOwnLags(x::Tuple{Int,Int}) = DifferentOwnLags([x[1], x[2]])
-function DifferentOwnLags(x::Tuple{A,A}) where {A<:Real}
+DifferentOwnLags(x::Tuple{Int, Int}) = DifferentOwnLags([x[1], x[2]])
+function DifferentOwnLags(x::Tuple{A, A}) where {A <: Real}
     DifferentOwnLags([round(Int, x[1]), round(Int, x[2])])
 end
 DifferentOwnLags() = DifferentOwnLags([5, 5])
@@ -1260,24 +1259,24 @@ ve3 = VARHAC(FixedLags(6))
 ve4 = VARHAC(AICSelector(), AutoLags())
 ```
 """
-mutable struct VARHAC{S<:LagSelector,L<:LagStrategy,T<:Real} <: Correlated
-    AICs::Union{Array{T},Nothing}
-    BICs::Union{Array{T},Nothing}
-    order_aic::Union{Array{Int},Nothing}  # Vector for SameLags, Matrix for DifferentOwnLags
-    order_bic::Union{Array{Int},Nothing}  # Vector for SameLags, Matrix for DifferentOwnLags
+mutable struct VARHAC{S <: LagSelector, L <: LagStrategy, T <: Real} <: Correlated
+    AICs::Union{Array{T}, Nothing}
+    BICs::Union{Array{T}, Nothing}
+    order_aic::Union{Array{Int}, Nothing}  # Vector for SameLags, Matrix for DifferentOwnLags
+    order_bic::Union{Array{Int}, Nothing}  # Vector for SameLags, Matrix for DifferentOwnLags
     selector::S
     strategy::L
 end
 
 function VARHAC(selector = AICSelector(), strategy = SameLags(8); T::Type{<:Real} = Float64)
     isa(strategy, FixedLags) && (selector = FixedSelector())
-    return VARHAC{typeof(selector),typeof(strategy),T}(
+    return VARHAC{typeof(selector), typeof(strategy), T}(
         nothing,
         nothing,
         nothing,
         nothing,
         selector,
-        strategy,
+        strategy
     )
 end
 
@@ -1303,8 +1302,8 @@ function _symbol_to_strategy(s::Symbol)
     else
         throw(
             ArgumentError(
-                "Invalid strategy symbol: $s. Use :auto for automatic lag selection",
-            ),
+            "Invalid strategy symbol: $s. Use :auto for automatic lag selection",
+        ),
         )
     end
 end
@@ -1343,18 +1342,18 @@ varhac = VARHAC(BICSelector(), DifferentOwnLags([3, 5]))
 max_lags = maxlags(varhac)  # Returns [3, 5]
 ```
 """
-maxlags(k::VARHAC{S,L,T}) where {S<:LagSelector,L<:SameLags,T} = k.strategy.maxlag
-function maxlags(k::VARHAC{S,L,T}) where {S<:LagSelector,L<:DifferentOwnLags,T}
+maxlags(k::VARHAC{S, L, T}) where {S <: LagSelector, L <: SameLags, T} = k.strategy.maxlag
+function maxlags(k::VARHAC{S, L, T}) where {S <: LagSelector, L <: DifferentOwnLags, T}
     k.strategy.maxlags
 end
-maxlags(k::VARHAC{S,L,T}) where {S<:LagSelector,L<:FixedLags,T} = k.strategy.maxlag
+maxlags(k::VARHAC{S, L, T}) where {S <: LagSelector, L <: FixedLags, T} = k.strategy.maxlag
 
 # For AutoLags, we need the data dimensions to compute optimal lag length
-function maxlags(k::VARHAC{S,AutoLags,T}, T_data::Int, N::Int) where {S<:LagSelector,T}
+function maxlags(k::VARHAC{S, AutoLags, T}, T_data::Int, N::Int) where {S <: LagSelector, T}
     return compute_auto_maxlag(T_data, N)
 end
 # Fallback that throws informative error if AutoLags used without dimensions
-function maxlags(k::VARHAC{S,AutoLags,T}) where {S<:LagSelector,T}
+function maxlags(k::VARHAC{S, AutoLags, T}) where {S <: LagSelector, T}
     error(
         "AutoLags requires data dimensions. Use maxlags(estimator, T, N) where T is sample size and N is number of variables.",
     )
@@ -1435,8 +1434,8 @@ aVar(varhac, X)  # Fit the model
 selected_orders = order(varhac)
 ```
 """
-order(k::VARHAC{AICSelector,S}) where {S} = order_aic(k)
-order(k::VARHAC{BICSelector,S}) where {S} = order_bic(k)
+order(k::VARHAC{AICSelector, S}) where {S} = order_aic(k)
+order(k::VARHAC{BICSelector, S}) where {S} = order_bic(k)
 
 ## Show method for VARHAC
 function Base.show(io::IO, k::VARHAC)
@@ -1493,7 +1492,7 @@ ve = DriscollKraay(Bartlett{Andrews}(), tis=time_ids, iis=unit_ids)
 ve = DriscollKraay(Parzen(4), tis=years, iis=countries)
 ```
 """
-mutable struct DriscollKraay{K,D} <: Correlated
+mutable struct DriscollKraay{K, D} <: Correlated
     K::K
     tis::D
     iis::D
@@ -1503,10 +1502,10 @@ function DriscollKraay(K::HAC; tis = nothing, iis = nothing)
     return DriscollKraay(K, Clustering(tis), Clustering(iis))
 end
 function DriscollKraay(
-    K::HAC,
-    tis::AbstractArray{T},
-    iis::AbstractArray{T},
-) where {T<:AbstractFloat}
+        K::HAC,
+        tis::AbstractArray{T},
+        iis::AbstractArray{T}
+) where {T <: AbstractFloat}
     return DriscollKraay(K, Clustering(tis), Clustering(iis))
 end
 
@@ -1566,22 +1565,22 @@ See [`HR5`](@ref) for details.
 """
 const HC5 = HR5
 
-Base.String(::Type{T}) where {T<:Truncated} = "Truncated"
-Base.String(::Type{T}) where {T<:Parzen} = "Parzen"
-Base.String(::Type{T}) where {T<:TukeyHanning} = "Tukey-Hanning"
-Base.String(::Type{T}) where {T<:Bartlett} = "Bartlett"
-Base.String(::Type{T}) where {T<:QuadraticSpectral} = "Quadratic Spectral"
-Base.String(::Type{T}) where {T<:HR0} = "HR0"
-Base.String(::Type{T}) where {T<:HR1} = "HR1"
-Base.String(::Type{T}) where {T<:HR2} = "HR2"
-Base.String(::Type{T}) where {T<:HR3} = "HR3"
-Base.String(::Type{T}) where {T<:HR4} = "HR4"
-Base.String(::Type{T}) where {T<:HR4m} = "HR4m"
-Base.String(::Type{T}) where {T<:HR5} = "HR5"
-Base.String(::Type{T}) where {T<:CR0} = "CR0"
-Base.String(::Type{T}) where {T<:CR1} = "CR1"
-Base.String(::Type{T}) where {T<:CR2} = "CR2"
-Base.String(::Type{T}) where {T<:CR3} = "CR3"
-Base.String(::Type{T}) where {T<:EWC} = "EWC"
-Base.String(::Type{T}) where {T<:DriscollKraay} = "Driscoll-Kraay"
-Base.String(::Type{T}) where {T<:VARHAC} = "VARHAC"
+Base.String(::Type{T}) where {T <: Truncated} = "Truncated"
+Base.String(::Type{T}) where {T <: Parzen} = "Parzen"
+Base.String(::Type{T}) where {T <: TukeyHanning} = "Tukey-Hanning"
+Base.String(::Type{T}) where {T <: Bartlett} = "Bartlett"
+Base.String(::Type{T}) where {T <: QuadraticSpectral} = "Quadratic Spectral"
+Base.String(::Type{T}) where {T <: HR0} = "HR0"
+Base.String(::Type{T}) where {T <: HR1} = "HR1"
+Base.String(::Type{T}) where {T <: HR2} = "HR2"
+Base.String(::Type{T}) where {T <: HR3} = "HR3"
+Base.String(::Type{T}) where {T <: HR4} = "HR4"
+Base.String(::Type{T}) where {T <: HR4m} = "HR4m"
+Base.String(::Type{T}) where {T <: HR5} = "HR5"
+Base.String(::Type{T}) where {T <: CR0} = "CR0"
+Base.String(::Type{T}) where {T <: CR1} = "CR1"
+Base.String(::Type{T}) where {T <: CR2} = "CR2"
+Base.String(::Type{T}) where {T <: CR3} = "CR3"
+Base.String(::Type{T}) where {T <: EWC} = "EWC"
+Base.String(::Type{T}) where {T <: DriscollKraay} = "Driscoll-Kraay"
+Base.String(::Type{T}) where {T <: VARHAC} = "VARHAC"

@@ -3,7 +3,7 @@ using LinearAlgebra: BLAS
 
 # Type union for OLS models - allows shared residualadjustment implementations
 # Both OLSEstimator and OLSMatrixEstimator use identical residual adjustment logic
-const OLSModel = Union{OLSEstimator,OLSMatrixEstimator}
+const OLSModel = Union{OLSEstimator, OLSMatrixEstimator}
 
 ##############################################################################
 ##
@@ -18,11 +18,11 @@ Compute M = X .* (residuals * adjustment) in-place.
 This is the fallback using @simd; RegressLVExt overrides with @turbo.
 """
 function compute_moment_matrix!(
-    M::Matrix{T},
-    X::Matrix{T},
-    residuals::Vector{T},
-    adjustment::T,
-) where {T<:AbstractFloat}
+        M::Matrix{T},
+        X::Matrix{T},
+        residuals::Vector{T},
+        adjustment::T
+) where {T <: AbstractFloat}
     n, k = size(X)
     @inbounds for j in 1:k
         @simd for i in 1:n
@@ -60,12 +60,12 @@ This avoids allocating an n×k moment matrix, only allocating G×k.
 - `X2`: The filled cluster aggregation matrix
 """
 function cluster_aggregate_direct!(
-    X2::Matrix{T},
-    X::Matrix{T},
-    y::AbstractVector{T},
-    mu::AbstractVector{T},
-    groups::Vector{Int},
-) where {T<:AbstractFloat}
+        X2::Matrix{T},
+        X::Matrix{T},
+        y::AbstractVector{T},
+        mu::AbstractVector{T},
+        groups::Vector{Int}
+) where {T <: AbstractFloat}
     n, k = size(X)
     ngroups = size(X2, 1)
 
@@ -93,12 +93,12 @@ Returns X2'X2 / n where X2 is the G×k cluster-aggregated moment matrix.
 When scale=true (default), divides by n to match CovarianceMatrices.aVar behavior.
 """
 function cluster_aVar_direct(
-    X::Matrix{T},
-    y::AbstractVector{T},
-    mu::AbstractVector{T},
-    clustering::CM.Clustering;
-    scale::Bool = true,
-) where {T<:AbstractFloat}
+        X::Matrix{T},
+        y::AbstractVector{T},
+        mu::AbstractVector{T},
+        clustering::CM.Clustering;
+        scale::Bool = true
+) where {T <: AbstractFloat}
     n, k = size(X)
     ngroups = clustering.ngroups
     groups = clustering.groups
@@ -171,15 +171,15 @@ requiring a fully constructed model object.
 - `Symmetric{T, Matrix{T}}`: HC1 variance-covariance matrix
 """
 function compute_hc1_vcov_direct(
-    X::Matrix{T},
-    residuals::Vector{T},
-    invXX::AbstractMatrix{T},
-    basis_coef::BitVector,
-    n::Int,
-    dof_model::Int,
-    dof_fes::Int,
-    dof_residual::Int,
-) where {T<:AbstractFloat}
+        X::Matrix{T},
+        residuals::Vector{T},
+        invXX::AbstractMatrix{T},
+        basis_coef::BitVector,
+        n::Int,
+        dof_model::Int,
+        dof_fes::Int,
+        dof_residual::Int
+) where {T <: AbstractFloat}
     # HR1 residual adjustment: sqrt(n / dof_residual)
     adjustment = sqrt(T(n) / T(dof_residual))
 
@@ -246,15 +246,15 @@ requiring a fully constructed model object.
 - `Symmetric{T, Matrix{T}}`: HC1 variance-covariance matrix
 """
 function compute_hc1_vcov_direct_iv(
-    Xhat::Matrix{T},
-    residuals::Vector{T},
-    invXX::AbstractMatrix{T},
-    basis_coef::BitVector,
-    n::Int,
-    dof_model::Int,
-    dof_fes::Int,
-    dof_residual::Int,
-) where {T<:AbstractFloat}
+        Xhat::Matrix{T},
+        residuals::Vector{T},
+        invXX::AbstractMatrix{T},
+        basis_coef::BitVector,
+        n::Int,
+        dof_model::Int,
+        dof_fes::Int,
+        dof_residual::Int
+) where {T <: AbstractFloat}
     # NOTE: For IV models, Xhat is already reduced (collinear columns removed)
     # So aVar will also be reduced-size: (sum(basis_coef) x sum(basis_coef))
     # invXX is also reduced-size: (sum(basis_coef) x sum(basis_coef))
@@ -348,13 +348,13 @@ function CovarianceMatrices.momentmatrix(m::OLSEstimator)
 end
 
 function CM.aVar(
-    k::K,
-    m::OLSEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:CM.AbstractAsymptoticVarianceEstimator}
+        k::K,
+        m::OLSEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: CM.AbstractAsymptoticVarianceEstimator}
     CM.setkernelweights!(k, m)
     # Compute moment matrix directly: X .* (y - mu) .* u in single fused broadcast
     # This avoids separate allocation for residuals vector
@@ -376,13 +376,13 @@ end
 #   - aVar(k::K, m::OLSEstimator) where K <: AbstractAsymptoticVarianceEstimator (above)
 #   - aVar(k::CR, m::RegressionModel) from CovarianceMatrices.jl
 function CM.aVar(
-    k::K,
-    m::OLSEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:CM.CR}
+        k::K,
+        m::OLSEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: CM.CR}
     X = modelmatrix(m)
     y = m.rr.y
     mu = m.rr.mu
@@ -390,7 +390,7 @@ function CM.aVar(
 
     # Optimization: For single-cluster CR0/CR1, use direct aggregation
     # This avoids allocating an n×k moment matrix
-    if length(k.g) == 1 && (K <: Union{CM.CR0,CM.CR1})
+    if length(k.g) == 1 && (K <: Union{CM.CR0, CM.CR1})
         clustering = k.g[1]
         # Direct aggregation: only allocate G×k instead of n×k
         # Pass scale parameter to match CovarianceMatrices.aVar behavior
@@ -410,9 +410,9 @@ function CM.aVar(
 end
 
 function CM.setkernelweights!(
-    k::CM.HAC{T},
-    X::OLSEstimator,
-) where {T<:Union{CM.NeweyWest,CM.Andrews}}
+        k::CM.HAC{T},
+        X::OLSEstimator
+) where {T <: Union{CM.NeweyWest, CM.Andrews}}
     CM.setkernelweights!(k, modelmatrix(X))
     k.wlock .= true
 end
@@ -449,8 +449,8 @@ stderror(CR1((cluster1, cluster2)), model)
 ```
 """
 function StatsBase.stderror(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::OLSEstimator,
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::OLSEstimator
 )
     return sqrt.(diag(vcov(ve, m)))
 end
@@ -479,7 +479,8 @@ function _lookup_cluster_vecs(cluster_syms::Tuple{Vararg{Symbol}}, m::OLSEstimat
         begin
             haskey(m.fes.clusters, name) || _cluster_not_found_error(name, m)
             m.fes.clusters[name]
-        end for name in cluster_syms
+        end
+    for name in cluster_syms
     )
 end
 
@@ -495,7 +496,7 @@ vcov(CR0(:firm_id), model)
 vcov(CR0(:firm_id, :year), model)  # multi-way
 ```
 """
-function CM.vcov(v::CM.CR0{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.vcov(v::CM.CR0{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(v.g, m)
     return vcov(CM.CR0(cluster_vecs), m)
 end
@@ -512,7 +513,7 @@ vcov(CR1(:firm_id), model)
 vcov(CR1(:firm_id, :year), model)  # multi-way
 ```
 """
-function CM.vcov(v::CM.CR1{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.vcov(v::CM.CR1{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(v.g, m)
     return vcov(CM.CR1(cluster_vecs), m)
 end
@@ -522,7 +523,7 @@ end
 
 Compute cluster-robust variance with CR2 (leverage-adjusted) estimator using stored cluster variable(s).
 """
-function CM.vcov(v::CM.CR2{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.vcov(v::CM.CR2{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(v.g, m)
     return vcov(CM.CR2(cluster_vecs), m)
 end
@@ -532,7 +533,7 @@ end
 
 Compute cluster-robust variance with CR3 (squared leverage) estimator using stored cluster variable(s).
 """
-function CM.vcov(v::CM.CR3{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.vcov(v::CM.CR3{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(v.g, m)
     return vcov(CM.CR3(cluster_vecs), m)
 end
@@ -581,25 +582,25 @@ end
 
 See also: [`CachedCR`](@ref CovarianceMatrices.CachedCR)
 """
-function CM.CachedCR(cr::CM.CR0{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.CachedCR(cr::CM.CR0{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(cr.g, m)
     ncols = sum(m.basis_coef)  # Number of non-collinear coefficients
     return CM.CachedCR(CM.CR0(cluster_vecs), ncols)
 end
 
-function CM.CachedCR(cr::CM.CR1{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.CachedCR(cr::CM.CR1{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(cr.g, m)
     ncols = sum(m.basis_coef)
     return CM.CachedCR(CM.CR1(cluster_vecs), ncols)
 end
 
-function CM.CachedCR(cr::CM.CR2{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.CachedCR(cr::CM.CR2{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(cr.g, m)
     ncols = sum(m.basis_coef)
     return CM.CachedCR(CM.CR2(cluster_vecs), ncols)
 end
 
-function CM.CachedCR(cr::CM.CR3{T}, m::OLSEstimator) where {T<:Tuple{Vararg{Symbol}}}
+function CM.CachedCR(cr::CM.CR3{T}, m::OLSEstimator) where {T <: Tuple{Vararg{Symbol}}}
     cluster_vecs = _lookup_cluster_vecs(cr.g, m)
     ncols = sum(m.basis_coef)
     return CM.CachedCR(CM.CR3(cluster_vecs), ncols)
@@ -661,12 +662,12 @@ end
 Compute asymptotic variance using CachedCR estimator.
 """
 function CM.aVar(
-    k::CM.CachedCR,
-    m::OLSEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
+        k::CM.CachedCR,
+        m::OLSEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
 )
     # Compute moment matrix directly
     X = modelmatrix(m)
@@ -717,7 +718,7 @@ bread(m::OLSEstimator) = invchol(m.pp)
 Compute leverage values (diagonal of hat matrix H = X(X'X)^(-1)X').
 Uses h_i = ||X_i * U^(-1)||^2 where X'X = U'U for efficiency.
 """
-function StatsAPI.leverage(m::OLSEstimator{T,<:OLSPredictorChol}) where {T}
+function StatsAPI.leverage(m::OLSEstimator{T, <:OLSPredictorChol}) where {T}
     # For Cholesky: X'X = U'U, so (X'X)^(-1) = U^(-1) * U^(-T)
     # h_i = X_i * U^(-1) * U^(-T) * X_i' = ||X_i * U^(-1)||^2
     X = modelmatrix(m)
@@ -728,7 +729,7 @@ function StatsAPI.leverage(m::OLSEstimator{T,<:OLSPredictorChol}) where {T}
     return vec(sum(abs2, XU', dims = 1))
 end
 
-function StatsAPI.leverage(m::OLSEstimator{T,<:OLSPredictorQR}) where {T}
+function StatsAPI.leverage(m::OLSEstimator{T, <:OLSPredictorQR}) where {T}
     # For QR: X = QR, so (X'X)^(-1) = R^(-1) R^(-T)
     # H = X(X'X)^(-1)X' and h_i = X_i (X'X)^(-1) X_i' = ||X_i R^(-1)||^2
     # Using R-factor directly avoids materializing full n×n Q matrix
@@ -739,7 +740,7 @@ function StatsAPI.leverage(m::OLSEstimator{T,<:OLSPredictorQR}) where {T}
     return vec(sum(abs2, XRinv, dims = 2))
 end
 
-function StatsAPI.leverage(m::OLSEstimator{T,<:OLSPredictorSweep}) where {T}
+function StatsAPI.leverage(m::OLSEstimator{T, <:OLSPredictorSweep}) where {T}
     # For Sweep: (X'X)^(-1) is stored directly in pp.invXX
     # h_i = X_i * (X'X)^(-1) * X_i'
     # Compute via Cholesky of invXX: invXX = L * L', then h_i = ||X_i * L||^2
@@ -996,7 +997,7 @@ function _compute_nonnested_fe_dof(m::OLSEstimator, cluster_groups)
         # A FE is nested if it's nested in ANY cluster dimension
         is_nested = any(
             crefs -> _isnested_groups(fe_groups[i], crefs, ngroups[i]),
-            cluster_refs_list,
+            cluster_refs_list
         )
         if !is_nested
             k_fe_nonnested += ngroups[i]
@@ -1060,10 +1061,10 @@ function _compute_nonnested_fe_dof_by_name(m::OLSEstimator, cluster_groups)
 end
 
 function CM.vcov(
-    k::CM.AbstractAsymptoticVarianceEstimator,
-    m::OLSEstimator;
-    dofadjust = true,
-    kwargs...,
+        k::CM.AbstractAsymptoticVarianceEstimator,
+        m::OLSEstimator;
+        dofadjust = true,
+        kwargs...
 )
     A = aVar(k, m; kwargs...)
     n = nobs(m)
@@ -1078,7 +1079,7 @@ function CM.vcov(
     # For HC1/HR1: V = n/(n-k-k_fe) * B * M'M * B  (with proper DOF)
     # For cluster-robust: Use fixest-style small sample correction
 
-    scale = if k isa Union{CM.HC1,CM.HR1}
+    scale = if k isa Union{CM.HC1, CM.HR1}
         # HC1: DOF adjustment should account for both k and k_fe
         # residualadjustment for HR1 already applied √(n/dof_residual)
         # So aVar returns M'M * (n/dof_residual) / n = M'M / dof_residual
@@ -1088,7 +1089,7 @@ function CM.vcov(
         # => scale = n * dof_residual / (n - k - k_fe)
         p_total = dof(m) + dof_fes(m)
         n * dof_residual(m) / (n - p_total)
-    elseif k isa Union{CM.CR0,CM.CR1,CM.CR2,CM.CR3}
+    elseif k isa Union{CM.CR0, CM.CR1, CM.CR2, CM.CR3}
         # Cluster-robust: Use fixest-style small sample correction
         # Formula: G/(G-1) * (n-1)/(n-K) where:
         #   - G = number of clusters (for multi-way: minimum cluster count)
@@ -1164,14 +1165,14 @@ bread(m::OLSMatrixEstimator) = invchol(m.pp)
 
 Compute leverage values (diagonal of hat matrix H = X(X'X)^(-1)X').
 """
-function StatsAPI.leverage(m::OLSMatrixEstimator{T,<:OLSPredictorChol}) where {T}
+function StatsAPI.leverage(m::OLSMatrixEstimator{T, <:OLSPredictorChol}) where {T}
     X = modelmatrix(m)
     # Transpose for column-major access: sum(abs2, XU', dims=1)
     XU = X / m.pp.chol.U
     return vec(sum(abs2, XU', dims = 1))
 end
 
-function StatsAPI.leverage(m::OLSMatrixEstimator{T,<:OLSPredictorQR}) where {T}
+function StatsAPI.leverage(m::OLSMatrixEstimator{T, <:OLSPredictorQR}) where {T}
     # For QR: (X'X)^(-1) = R^(-1) R^(-T)
     # h_i = ||X_i R^(-1)||^2, using R-factor directly avoids materializing full Q
     X = modelmatrix(m)
@@ -1180,7 +1181,7 @@ function StatsAPI.leverage(m::OLSMatrixEstimator{T,<:OLSPredictorQR}) where {T}
     return vec(sum(abs2, XRinv, dims = 2))
 end
 
-function StatsAPI.leverage(m::OLSMatrixEstimator{T,<:OLSPredictorSweep}) where {T}
+function StatsAPI.leverage(m::OLSMatrixEstimator{T, <:OLSPredictorSweep}) where {T}
     # For Sweep: (X'X)^(-1) is stored directly
     X_reduced = m.pp.X_reduced
     invXX = m.pp.invXX
@@ -1194,13 +1195,13 @@ end
 # in this file, eliminating code duplication.
 
 function CM.aVar(
-    k::K,
-    m::OLSMatrixEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:CM.AbstractAsymptoticVarianceEstimator}
+        k::K,
+        m::OLSMatrixEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: CM.AbstractAsymptoticVarianceEstimator}
     CM.setkernelweights!(k, m)
     # Compute moment matrix directly: X .* (y - mu) .* u in single fused broadcast
     u = residualadjustment(k, m)
@@ -1217,13 +1218,13 @@ end
 
 # Disambiguating method for cluster-robust estimators
 function CM.aVar(
-    k::K,
-    m::OLSMatrixEstimator;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
-) where {K<:CM.CR}
+        k::K,
+        m::OLSMatrixEstimator;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
+) where {K <: CM.CR}
     X = modelmatrix(m)
     y = m.rr.y
     mu = m.rr.mu
@@ -1231,7 +1232,7 @@ function CM.aVar(
 
     # Optimization: For single-cluster CR0/CR1, use direct aggregation
     # This avoids allocating an n×k moment matrix
-    if length(k.g) == 1 && (K <: Union{CM.CR0,CM.CR1})
+    if length(k.g) == 1 && (K <: Union{CM.CR0, CM.CR1})
         clustering = k.g[1]
         # Direct aggregation: only allocate G×k instead of n×k
         # Pass scale parameter to match CovarianceMatrices.aVar behavior
@@ -1251,9 +1252,9 @@ function CM.aVar(
 end
 
 function CM.setkernelweights!(
-    k::CM.HAC{T},
-    X::OLSMatrixEstimator,
-) where {T<:Union{CM.NeweyWest,CM.Andrews}}
+        k::CM.HAC{T},
+        X::OLSMatrixEstimator
+) where {T <: Union{CM.NeweyWest, CM.Andrews}}
     CM.setkernelweights!(k, modelmatrix(X))
     k.wlock .= true
 end
@@ -1264,28 +1265,28 @@ end
 Compute standard errors using a specified variance estimator.
 """
 function StatsBase.stderror(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::OLSMatrixEstimator,
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::OLSMatrixEstimator
 )
     return sqrt.(diag(vcov(ve, m)))
 end
 
 function CM.vcov(
-    k::CM.AbstractAsymptoticVarianceEstimator,
-    m::OLSMatrixEstimator;
-    dofadjust = true,
-    kwargs...,
+        k::CM.AbstractAsymptoticVarianceEstimator,
+        m::OLSMatrixEstimator;
+        dofadjust = true,
+        kwargs...
 )
     A = aVar(k, m; kwargs...)
     n = nobs(m)
     B = invchol(m.pp)
     basis_coef = m.basis_coef
 
-    scale = if k isa Union{CM.HC1,CM.HR1}
+    scale = if k isa Union{CM.HC1, CM.HR1}
         # HC1: DOF adjustment
         p_total = dof(m)
         n * dof_residual(m) / (n - p_total)
-    elseif k isa Union{CM.CR0,CM.CR1,CM.CR2,CM.CR3}
+    elseif k isa Union{CM.CR0, CM.CR1, CM.CR2, CM.CR3}
         # Cluster-robust: simple G/(G-1) * (n-1)/(n-K) adjustment
         # For matrix estimator, no fixed effects so K = k
         G = minimum(g.ngroups for g in k.g)
@@ -1319,9 +1320,9 @@ function CM.vcov(
 end
 
 function StatsAPI.confint(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::OLSMatrixEstimator;
-    level::Real = 0.95,
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::OLSMatrixEstimator;
+        level::Real = 0.95
 )
     scale = tdistinvcdf(StatsAPI.dof_residual(m), 1 - (1 - level) / 2)
     se = CovarianceMatrices.stderror(ve, m)

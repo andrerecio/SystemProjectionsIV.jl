@@ -67,12 +67,12 @@ S_T(k::MomentSmoother) = float((2 * k.m_T + 1) / 2)
 
 # Kernel function evaluations
 # Calculate k(s/S_T) for the uniform kernel
-function kernel_func(k::UniformSmoother, s::T) where {T<:Real}
+function kernel_func(k::UniformSmoother, s::T) where {T <: Real}
     x = s / S_T(k)
     abs(x) ≤ one(T) ? one(T) : zero(T)
 end
 
-function kernel_func(k::TriangularSmoother, s::T) where {T<:Real}
+function kernel_func(k::TriangularSmoother, s::T) where {T <: Real}
     x = s / S_T(k)
     abs(x) ≤ one(T) ? one(T) - abs(x) : zero(T)
 end
@@ -155,7 +155,7 @@ smoother_t = TriangularSmoother(5)
 G_smooth_t = smooth_moments(G, smoother_t)
 ```
 """
-function smooth_moments(G::AbstractMatrix, kernel::T) where {T<:UniformSmoother}
+function smooth_moments(G::AbstractMatrix, kernel::T) where {T <: UniformSmoother}
     return uniform_sum(G, kernel.m_T)
 end
 
@@ -188,22 +188,22 @@ smooth_moments!(G_smooth, G, smoother)
 ```
 """
 function smooth_moments!(
-    dest::AbstractMatrix,
-    G::AbstractMatrix,
-    kernel::T,
-) where {T<:UniformSmoother}
+        dest::AbstractMatrix,
+        G::AbstractMatrix,
+        kernel::T
+) where {T <: UniformSmoother}
     return uniform_sum!(dest, G, kernel.m_T)
 end
 
-function smooth_moments(G::AbstractMatrix, kernel::T) where {T<:TriangularSmoother}
+function smooth_moments(G::AbstractMatrix, kernel::T) where {T <: TriangularSmoother}
     return triangular_sum(G, kernel.m_T)
 end
 
 function smooth_moments!(
-    dest::AbstractMatrix,
-    G::AbstractMatrix,
-    kernel::T,
-) where {T<:TriangularSmoother}
+        dest::AbstractMatrix,
+        G::AbstractMatrix,
+        kernel::T
+) where {T <: TriangularSmoother}
     return triangular_sum!(dest, G, kernel.m_T)
 end
 
@@ -216,14 +216,14 @@ end
 Computes sum_{s=max(t-T,-m_T)}^{min(t-1,m_T)} G[t-s, j] using prefix sums for O(T) per column.
 """
 function uniform_sum!(
-    dest::AbstractMatrix{T},
-    G::AbstractMatrix{<:Int},
-    m_T,
-) where {T<:Real}
+        dest::AbstractMatrix{T},
+        G::AbstractMatrix{<:Int},
+        m_T
+) where {T <: Real}
     uniform_sum!(dest, float.(G), m_T)
 end
 
-function uniform_sum!(dest::AbstractMatrix{T}, G::AbstractMatrix{T}, m_T) where {T<:Real}
+function uniform_sum!(dest::AbstractMatrix{T}, G::AbstractMatrix{T}, m_T) where {T <: Real}
     n, m = size(G)
     @assert size(dest)==(n, m) "Destination matrix must have the same size as G, ($n, $m)"
 
@@ -239,18 +239,18 @@ function uniform_sum(G::AbstractMatrix{<:Int}, m_T)
     uniform_sum(float.(G), m_T)
 end
 
-function uniform_sum(G::AbstractMatrix{T}, m_T) where {T<:Real}
+function uniform_sum(G::AbstractMatrix{T}, m_T) where {T <: Real}
     dest = similar(G)
     return uniform_sum!(dest, G, m_T)
 end
 
 # One column, O(T) using prefix sums
 function _col_uniform_sum!(
-    dest::AbstractVector{T},
-    col::AbstractVector{T},
-    m_T,
-    P,
-) where {T<:Real}
+        dest::AbstractVector{T},
+        col::AbstractVector{T},
+        m_T,
+        P
+) where {T <: Real}
     n = length(col)
     mT = Int(m_T)
     # Build prefix sum
@@ -280,14 +280,15 @@ end
 Computes triangular kernel smoothing using prefix sums for O(T) per column.
 """
 function triangular_sum!(
-    dest::AbstractMatrix{T},
-    G::AbstractMatrix{<:Int},
-    m_T,
-) where {T<:Real}
+        dest::AbstractMatrix{T},
+        G::AbstractMatrix{<:Int},
+        m_T
+) where {T <: Real}
     triangular_sum!(dest, float.(G), m_T)
 end
 
-function triangular_sum!(dest::AbstractMatrix{T}, G::AbstractMatrix{T}, m_T) where {T<:Real}
+function triangular_sum!(dest::AbstractMatrix{T}, G::AbstractMatrix{T}, m_T) where {T <:
+                                                                                    Real}
     n, m = size(G)
     @assert size(dest)==(n, m) "Destination matrix must have the same size as G, ($n, $m)"
 
@@ -304,19 +305,19 @@ function triangular_sum(G::AbstractMatrix{<:Int}, m_T)
     triangular_sum(float.(G), m_T)
 end
 
-function triangular_sum(G::AbstractMatrix{T}, m_T) where {T<:Real}
+function triangular_sum(G::AbstractMatrix{T}, m_T) where {T <: Real}
     dest = similar(G)
     return triangular_sum!(dest, G, m_T)
 end
 
 # One column, O(T) using two prefix sum arrays
 function _col_triangular_sum!(
-    dest::AbstractVector{T},
-    col::AbstractVector{T},
-    m_T,
-    P,
-    W,
-) where {T<:Real}
+        dest::AbstractVector{T},
+        col::AbstractVector{T},
+        m_T,
+        P,
+        W
+) where {T <: Real}
     n = length(col)
     mT = Int(m_T)
     scale = 2.0 / (2 * mT + 1)
@@ -355,12 +356,12 @@ function _col_triangular_sum!(
 end
 
 function _col_triangular_sum_fma!(
-    dest::AbstractVector{T},
-    col::AbstractVector{T},
-    m_T,
-    P,
-    W,
-) where {T<:Real}
+        dest::AbstractVector{T},
+        col::AbstractVector{T},
+        m_T,
+        P,
+        W
+) where {T <: Real}
     n = length(col)
     mT = Int(m_T)
     scale = float(2) / float(2 * mT + 1)
@@ -451,10 +452,10 @@ Smith, R. J. (2011). "GEL Criteria for Moment Condition Models."
 Econometric Theory, 27(6), 1192-1235.
 """
 function avar(
-    k::MomentSmoother,
-    X::AbstractMatrix{F};
-    prewhite::Bool = false,
-) where {F<:Real}
+        k::MomentSmoother,
+        X::AbstractMatrix{F};
+        prewhite::Bool = false
+) where {F <: Real}
     # Apply prewhitening if requested (using same approach as HAC)
     Z, D = finalize_prewhite(X, Val(prewhite))
     T, m = size(Z)

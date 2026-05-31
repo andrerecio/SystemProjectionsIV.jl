@@ -20,23 +20,23 @@ Supports fixed effects but NOT instrumental variables.
 - `factorization`: Choose solver factorization method
 """
 function fit_ols(
-    @nospecialize(df),
-    formula::FormulaTerm;
-    contrasts::Dict = Dict{Symbol,Any}(),
-    weights::Union{Symbol,Nothing} = nothing,
-    save::Union{Bool,Symbol} = :residuals,
-    save_cluster::Union{Symbol,Vector{Symbol},Nothing} = nothing,
-    dof_add::Integer = 0,
-    method::Symbol = :cpu,
-    factorization::Symbol = :auto,  # NEW: :auto, :chol, or :qr
-    collinearity::Symbol = :qr,     # :qr or :sweep
-    nthreads::Integer = method == :cpu ? Threads.nthreads() : 256,
-    double_precision::Bool = method == :cpu,
-    tol::Real = 1e-6,
-    maxiter::Integer = 10000,
-    drop_singletons::Bool = true,
-    progress_bar::Bool = true,
-    subset::Union{Nothing,AbstractVector} = nothing,
+        @nospecialize(df),
+        formula::FormulaTerm;
+        contrasts::Dict = Dict{Symbol, Any}(),
+        weights::Union{Symbol, Nothing} = nothing,
+        save::Union{Bool, Symbol} = :residuals,
+        save_cluster::Union{Symbol, Vector{Symbol}, Nothing} = nothing,
+        dof_add::Integer = 0,
+        method::Symbol = :cpu,
+        factorization::Symbol = :auto,  # NEW: :auto, :chol, or :qr
+        collinearity::Symbol = :qr,     # :qr or :sweep
+        nthreads::Integer = method == :cpu ? Threads.nthreads() : 256,
+        double_precision::Bool = method == :cpu,
+        tol::Real = 1e-6,
+        maxiter::Integer = 10000,
+        drop_singletons::Bool = true,
+        progress_bar::Bool = true,
+        subset::Union{Nothing, AbstractVector} = nothing
 )
 
     # Validate keywords
@@ -46,8 +46,8 @@ function fit_ols(
     # Validate factorization choice
     factorization in (:auto, :chol, :qr, :sweep) || throw(
         ArgumentError(
-            "factorization must be :auto, :chol, :qr, or :sweep, got :$factorization",
-        ),
+        "factorization must be :auto, :chol, :qr, or :sweep, got :$factorization",
+    ),
     )
 
     # Validate collinearity method
@@ -55,7 +55,7 @@ function fit_ols(
         throw(ArgumentError("collinearity must be :qr or :sweep, got :$collinearity"))
 
     # Convert contrasts to Dict{Symbol, Any}
-    contrasts = convert(Dict{Symbol,Any}, contrasts)
+    contrasts = convert(Dict{Symbol, Any}, contrasts)
 
     # Convert to DataFrame
     df = DataFrame(df; copycols = false)
@@ -74,7 +74,7 @@ function fit_ols(
             df,
             data_prep.fe_vars,
             save_cluster,
-            data_prep.esample,
+            data_prep.esample
         )
     end
 
@@ -87,9 +87,8 @@ function fit_ols(
 
     # Create subsetted dataframe - optimize by checking if disallowmissing is needed
     subdf = _create_subdf(df, data_prep.all_vars, data_prep.esample)
-    subfes =
-        isempty(data_prep.fes) ? FixedEffect[] :
-        FixedEffect[fe[data_prep.esample] for fe in data_prep.fes]
+    subfes = isempty(data_prep.fes) ? FixedEffect[] :
+             FixedEffect[fe[data_prep.esample] for fe in data_prep.fes]
 
     ##############################################################################
     ## Create Model Matrices
@@ -100,31 +99,30 @@ function fit_ols(
 
     # Apply schema
     s = schema(data_prep.formula, subdf, contrasts)
-    formula_schema =
-        apply_schema(data_prep.formula, s, OLSEstimator, data_prep.has_fe_intercept)
+    formula_schema = apply_schema(data_prep.formula, s, OLSEstimator, data_prep.has_fe_intercept)
 
     # Create matrices
     y_raw = response(formula_schema, subdf)
     y_raw isa AbstractVector || throw(
         ArgumentError(
-            "the response variable must be numeric (got a matrix — " *
-            "check that the dependent variable column is not a String or categorical type)",
-        ),
+        "the response variable must be numeric (got a matrix — " *
+        "check that the dependent variable column is not a String or categorical type)",
+    ),
     )
     y = convert(Vector{T}, y_raw)
     X = convert(Matrix{T}, modelmatrix(formula_schema, subdf))
     response_name, coef_names = coefnames(formula_schema)
 
     # Filter rows with NaN (e.g. from lags() producing NaN for out-of-bounds entries)
-    y, (X,), wts, subfes, nobs_eff, has_nan_rows, nan_rows =
-        _filter_nan_rows(y, (X,), wts, subfes)
+    y, (X,), wts, subfes, nobs_eff,
+    has_nan_rows, nan_rows = _filter_nan_rows(y, (X,), wts, subfes)
 
     # Build response object (fitted values will be set after solve)
     rr = build_response(y, wts, Symbol(response_name))
 
     # Compute total sum of squares before demeaning
-    tss_total =
-        compute_tss_total(rr.y, wts, data_prep.has_intercept | data_prep.has_fe_intercept)
+    tss_total = compute_tss_total(rr.y, wts, data_prep.has_intercept |
+                                             data_prep.has_fe_intercept)
 
     # Validate finite values
     all(isfinite, wts) || throw("Weights are not finite")
@@ -151,7 +149,11 @@ function fit_ols(
         colnames = vcat(response_name, coef_names)
 
         # Partial out fixed effects (modifies cols in-place)
-        feM, iterations, converged, tss_partial, oldy, oldX = partial_out_fixed_effects!(
+        feM, iterations,
+        converged,
+        tss_partial,
+        oldy,
+        oldX = partial_out_fixed_effects!(
             cols,
             colnames,
             subfes,
@@ -164,7 +166,7 @@ function fit_ols(
             data_prep.save_fes,
             data_prep.has_intercept,
             data_prep.has_fe_intercept,
-            T,
+            T
         )
     else
         iterations, converged = 0, true
@@ -202,13 +204,14 @@ function fit_ols(
 
     # Unified solver: detect collinearity, factorize, and solve in one pass
     # This avoids redundant matrix subsetting and double-solving
-    pp, basis_coef, _ = fit_ols_core!(
+    pp, basis_coef,
+    _ = fit_ols_core!(
         rr,
         X,
         factorization;
         save_matrices = save_matrices,
         collinearity = collinearity,
-        has_intercept = data_prep.has_intercept,
+        has_intercept = data_prep.has_intercept
     )
 
     ##############################################################################
@@ -234,8 +237,8 @@ function fit_ols(
     tss_for_fstat = data_prep.has_fes ? tss_partial : tss_total
     mss_val = tss_for_fstat - rss
     dof_model_ftest = dof_model - (data_prep.has_intercept & !data_prep.has_fe_intercept)
-    F_stat =
-        dof_model_ftest > 0 ? (mss_val / dof_model_ftest) / (rss / dof_residual) : T(NaN)
+    F_stat = dof_model_ftest > 0 ? (mss_val / dof_model_ftest) / (rss / dof_residual) :
+             T(NaN)
     p_val = dof_model_ftest > 0 ? fdistccdf(dof_model_ftest, dof_residual, F_stat) : T(NaN)
 
     ##############################################################################
@@ -246,11 +249,12 @@ function fit_ols(
     if data_prep.save_fes && oldy !== nothing
         # Solve for FE estimates
         # Note: oldX was saved before collinearity detection, so filter by basis_coef
-        newfes, b, c = solve_coefficients!(
+        newfes, b,
+        c = solve_coefficients!(
             oldy - oldX[:, basis_coef] * pp.beta[basis_coef],
             feM;
             tol = tol,
-            maxiter = maxiter,
+            maxiter = maxiter
         )
 
         # Create DataFrame with FE estimates
@@ -258,8 +262,7 @@ function fit_ols(
             augmentdf[!, fekey] = df[!, fekey]
         end
         for j in eachindex(subfes)
-            augmentdf[!, data_prep.feids[j]] =
-                Vector{Union{T,Missing}}(missing, data_prep.nrows)
+            augmentdf[!, data_prep.feids[j]] = Vector{Union{T, Missing}}(missing, data_prep.nrows)
             augmentdf[data_prep.esample, data_prep.feids[j]] = newfes[j]
         end
     end
@@ -287,7 +290,7 @@ function fit_ols(
         ngroups_fes,
         iterations,
         converged,
-        method,
+        method
     )
 
     ##############################################################################
@@ -295,8 +298,8 @@ function fit_ols(
     ##############################################################################
 
     # Handle Colon case for esample
-    esample_final =
-        data_prep.esample isa Colon ? trues(data_prep.nrows) : BitVector(data_prep.esample)
+    esample_final = data_prep.esample isa Colon ? trues(data_prep.nrows) :
+                    BitVector(data_prep.esample)
     # Update esample to reflect NaN-filtered rows (e.g. from lags())
     if has_nan_rows
         idx = findall(esample_final)
@@ -333,7 +336,7 @@ function fit_ols(
             nobs_eff,
             dof_model,
             dof_fes,
-            dof_residual,
+            dof_residual
         )
     else
         # Minimal mode: can't compute vcov without X
@@ -352,8 +355,8 @@ function fit_ols(
 
     # Compute robust F-statistic (Wald test) using vcov
     has_int = data_prep.has_intercept
-    F_stat_robust, p_val_robust =
-        compute_robust_fstat(coef_vec, vcov_matrix, has_int, dof_residual)
+    F_stat_robust,
+    p_val_robust = compute_robust_fstat(coef_vec, vcov_matrix, has_int, dof_residual)
 
     ##############################################################################
     ## Clear y/mu if minimal mode (to save memory)
@@ -369,7 +372,7 @@ function fit_ols(
     ## Return OLSEstimator
     ##############################################################################
 
-    return OLSEstimator{T,typeof(pp),typeof(default_vcov)}(
+    return OLSEstimator{T, typeof(pp), typeof(default_vcov)}(
         rr,
         pp,
         fes,
@@ -395,6 +398,6 @@ function fit_ols(
         t_stats_val,
         p_values_val,
         T(F_stat_robust),
-        T(p_val_robust),
+        T(p_val_robust)
     )
 end

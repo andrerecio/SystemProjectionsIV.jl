@@ -67,9 +67,9 @@ struct WeakIVTestResult{T} <: AbstractTest
     kappa::T
 
     # Critical values (TSLS, LIML, GMMf) at τ ∈ {5%, 10%, 20%, 30%}
-    cv_TSLS::NTuple{4,T}
-    cv_LIML::NTuple{4,T}
-    cv_GMMf::NTuple{4,T}
+    cv_TSLS::NTuple{4, T}
+    cv_LIML::NTuple{4, T}
+    cv_GMMf::NTuple{4, T}
 
     # Metadata
     level::T
@@ -108,10 +108,10 @@ r.cv_TSLS         # TSLS critical values at 5%, 10%, 20%, 30%
 ```
 """
 function weakivtest(
-    m::IVEstimator{T};
-    level::Real = 0.05,
-    eps::Real = 0.001,
-    benchmark::Symbol = :nagar,
+        m::IVEstimator{T};
+        level::Real = 0.05,
+        eps::Real = 0.001,
+        benchmark::Symbol = :nagar
 ) where {T}
     # Validate
     pe = m.postestimation
@@ -152,7 +152,7 @@ function weakivtest(
         m.vcov_estimator,
         T(level),
         T(eps),
-        benchmark,
+        benchmark
     )
 end
 
@@ -174,10 +174,10 @@ Requires a single endogenous regressor.
 A `WeakIVTestResult` containing effective F, robust F, critical values, etc.
 """
 function weakivtest(
-    m::IVMatrixEstimator{T};
-    level::Real = 0.05,
-    eps::Real = 0.001,
-    benchmark::Symbol = :nagar,
+        m::IVMatrixEstimator{T};
+        level::Real = 0.05,
+        eps::Real = 0.001,
+        benchmark::Symbol = :nagar
 ) where {T}
     pe = m.postestimation
     n_endo = pe.n_endogenous
@@ -222,7 +222,7 @@ function weakivtest(
         m.vcov_estimator,
         T(level),
         T(eps),
-        benchmark,
+        benchmark
     )
 end
 
@@ -252,18 +252,18 @@ and `weakivtest(::IVMatrixEstimator)` delegate here after extracting data.
 - `benchmark`: Bias benchmark (:nagar or :ols)
 """
 function _weakivtest_core(
-    y_full::Vector{T},
-    X_orig::Matrix{T},
-    Xendo_orig::Vector{T},
-    Z_res::Matrix{T},
-    k_exo::Int,
-    K::Int,
-    S::Int,
-    L::Int,
-    vcov_est,
-    level::T,
-    eps::T,
-    benchmark::Symbol,
+        y_full::Vector{T},
+        X_orig::Matrix{T},
+        Xendo_orig::Vector{T},
+        Z_res::Matrix{T},
+        k_exo::Int,
+        K::Int,
+        S::Int,
+        L::Int,
+        vcov_est,
+        level::T,
+        eps::T,
+        benchmark::Symbol
 ) where {T}
     # Step 1: Partial out exogenous regressors from y and Xendo
     if k_exo > 0
@@ -362,8 +362,8 @@ function _weakivtest_core(
     res_gmmf = y_res .- Xendo_demeaned .* bgmmf_val
     S_1gmmf = _weakiv_compute_avar_residuals(res_gmmf, Zs, vcov_est, S)
     piW2invpi = dot(pihat, piW2inv)
-    sebgmmf_val =
-        sqrt((1 / piW2invpi) * dot(piW2inv, S_1gmmf * piW2inv) * (1 / piW2invpi) / S)
+    sebgmmf_val = sqrt((1 / piW2invpi) * dot(piW2inv, S_1gmmf * piW2inv) * (1 / piW2invpi) /
+                       S)
 
     # Step 10: Compute F-statistics
     F_nonrobust_val = S * pipi / (K * omega_22)
@@ -399,19 +399,19 @@ function _weakivtest_core(
     tau_x = (T(20), T(10), T(5), T(10 / 3))
 
     cv_TSLS = ntuple(i -> begin
-        x = tau_x[i] * B_TSLS
-        _patnaik_critical_value(W_2, T(level), x)
-    end, 4)
+            x = tau_x[i] * B_TSLS
+            _patnaik_critical_value(W_2, T(level), x)
+        end, 4)
 
     cv_LIML = ntuple(i -> begin
-        x = tau_x[i] * B_LIML
-        _patnaik_critical_value(W_2, T(level), x)
-    end, 4)
+            x = tau_x[i] * B_LIML
+            _patnaik_critical_value(W_2, T(level), x)
+        end, 4)
 
     cv_GMMf = ntuple(i -> begin
-        x_gmmf = tau_x[i] * B_GMMf * K
-        _invnchisq(T(K), x_gmmf, T(1) - T(level)) / K
-    end, 4)
+            x_gmmf = tau_x[i] * B_GMMf * K
+            _invnchisq(T(K), x_gmmf, T(1) - T(level)) / K
+        end, 4)
 
     return WeakIVTestResult{T}(
         F_eff_val,
@@ -429,7 +429,7 @@ function _weakivtest_core(
         cv_GMMf,
         T(level),
         K,
-        S,
+        S
     )
 end
 
@@ -451,7 +451,7 @@ Returns raw M'M for HC estimators, or cluster-summed version for CR estimators.
 No DOF scaling is applied (the caller handles that).
 """
 function _weakiv_compute_meat(M::Matrix{T}, vcov_est, n::Int) where {T}
-    if vcov_est isa Union{CovarianceMatrices.CR0,CovarianceMatrices.CR1}
+    if vcov_est isa Union{CovarianceMatrices.CR0, CovarianceMatrices.CR1}
         # Cluster-robust: sum within clusters first
         clusters = vcov_est.g[1]
         ngroups = clusters.ngroups
@@ -485,7 +485,7 @@ Compute the cluster DOF adjustment factor (Stata's clustdfadj).
 For non-clustered estimators, returns 1.0.
 """
 function _weakiv_cluster_dof_adj(vcov_est, n::Int)
-    if vcov_est isa Union{CovarianceMatrices.CR0,CovarianceMatrices.CR1}
+    if vcov_est isa Union{CovarianceMatrices.CR0, CovarianceMatrices.CR1}
         clusters = vcov_est.g[1]
         G = clusters.ngroups
         return (n / (n - 1)) * (G - 1) / G
@@ -506,10 +506,10 @@ for computing standard errors of reduced-form estimators.
 Returns the K × K matrix.
 """
 function _weakiv_compute_avar_residuals(
-    resid::Vector{T},
-    Zstar::Matrix{T},
-    vcov_est,
-    n::Int,
+        resid::Vector{T},
+        Zstar::Matrix{T},
+        vcov_est,
+        n::Int
 ) where {T}
     M = Zstar .* resid  # n × K moment matrix
     return _weakiv_compute_meat(M, vcov_est, n) ./ n
@@ -571,7 +571,7 @@ Compute the p-th quantile of the noncentral chi-squared distribution
 with `df` degrees of freedom and noncentrality parameter `ncp`.
 Uses bisection on `nchisqcdf`.
 """
-function _invnchisq(df::T, ncp::T, p::T) where {T<:Real}
+function _invnchisq(df::T, ncp::T, p::T) where {T <: Real}
     # Handle edge cases
     ncp < 0 && return T(NaN)
     p ≤ 0 && return T(0)
@@ -667,8 +667,7 @@ function _compute_BTSLS_nagar(W_1::AbstractMatrix{T}, W_12, W_2, eps::T) where {
     end
 
     # Find betastart range
-    betastart =
-        _find_betastart(beta -> _Bmaxfunction_nagar(beta, W_1, W_12, W_2), LimitB, eps)
+    betastart = _find_betastart(beta -> _Bmaxfunction_nagar(beta, W_1, W_12, W_2), LimitB, eps)
 
     if betastart == 0
         return _Bmaxfunction_nagar(T(0), W_1, W_12, W_2)
@@ -678,8 +677,7 @@ function _compute_BTSLS_nagar(W_1::AbstractMatrix{T}, W_12, W_2, eps::T) where {
     best_beta = _grid_search(beta -> _Bmaxfunction_nagar(beta, W_1, W_12, W_2), betastart)
 
     # Nelder-Mead refinement
-    best_beta =
-        _nelder_mead_1d(beta -> -_Bmaxfunction_nagar(beta, W_1, W_12, W_2), best_beta)
+    best_beta = _nelder_mead_1d(beta -> -_Bmaxfunction_nagar(beta, W_1, W_12, W_2), best_beta)
 
     return _Bmaxfunction_nagar(best_beta, W_1, W_12, W_2)
 end
@@ -702,9 +700,9 @@ function _Bmaxfunction_ols(beta::T, Omega, W_1, W_12, W_2) where {T}
     # OLS benchmark: BM = sqrt((Omega[1,1] - 2*beta*Omega[1,2] + beta^2*Omega[2,2]) / Omega[2,2])
     BM = sqrt(
         max(
-            T(0),
-            (Omega[1, 1] - 2 * beta * Omega[1, 2] + beta^2 * Omega[2, 2]) / Omega[2, 2],
-        ),
+        T(0),
+        (Omega[1, 1] - 2 * beta * Omega[1, 2] + beta^2 * Omega[2, 2]) / Omega[2, 2]
+    ),
     )
 
     if BM ≈ 0 || trW2 ≈ 0
@@ -727,18 +725,15 @@ function _compute_BTSLS_ols(Omega, W_1::AbstractMatrix{T}, W_12, W_2, eps::T) wh
         return T(0)
     end
 
-    betastart =
-        _find_betastart(beta -> _Bmaxfunction_ols(beta, Omega, W_1, W_12, W_2), LimitB, eps)
+    betastart = _find_betastart(beta -> _Bmaxfunction_ols(beta, Omega, W_1, W_12, W_2), LimitB, eps)
 
     if betastart == 0
         return _Bmaxfunction_ols(T(0), Omega, W_1, W_12, W_2)
     end
 
-    best_beta =
-        _grid_search(beta -> _Bmaxfunction_ols(beta, Omega, W_1, W_12, W_2), betastart)
+    best_beta = _grid_search(beta -> _Bmaxfunction_ols(beta, Omega, W_1, W_12, W_2), betastart)
 
-    best_beta =
-        _nelder_mead_1d(beta -> -_Bmaxfunction_ols(beta, Omega, W_1, W_12, W_2), best_beta)
+    best_beta = _nelder_mead_1d(beta -> -_Bmaxfunction_ols(beta, Omega, W_1, W_12, W_2), best_beta)
 
     return _Bmaxfunction_ols(best_beta, Omega, W_1, W_12, W_2)
 end
@@ -818,12 +813,12 @@ function _BGMMf_objective_nagar(beta::T, trW_1s, trW_12s, eig, K) where {T}
 end
 
 function _compute_BGMMf_nagar(
-    trW_1s::T,
-    trW_12s::T,
-    mineig::T,
-    maxeig::T,
-    K::Int,
-    bgmmf_start::T,
+        trW_1s::T,
+        trW_12s::T,
+        mineig::T,
+        maxeig::T,
+        K::Int,
+        bgmmf_start::T
 ) where {T}
     results = T[]
 
@@ -832,20 +827,20 @@ function _compute_BGMMf_nagar(
             if sense == :max
                 beta_opt = _nelder_mead_1d(
                     b -> -_BGMMf_objective_nagar(b, trW_1s, trW_12s, eig, K),
-                    bgmmf_start,
+                    bgmmf_start
                 )
                 push!(
                     results,
-                    abs(_BGMMf_objective_nagar(beta_opt, trW_1s, trW_12s, eig, K)),
+                    abs(_BGMMf_objective_nagar(beta_opt, trW_1s, trW_12s, eig, K))
                 )
             else
                 beta_opt = _nelder_mead_1d(
                     b -> _BGMMf_objective_nagar(b, trW_1s, trW_12s, eig, K),
-                    bgmmf_start,
+                    bgmmf_start
                 )
                 push!(
                     results,
-                    abs(_BGMMf_objective_nagar(beta_opt, trW_1s, trW_12s, eig, K)),
+                    abs(_BGMMf_objective_nagar(beta_opt, trW_1s, trW_12s, eig, K))
                 )
             end
         catch
@@ -864,21 +859,21 @@ function _BGMMf_objective_ols(beta::T, Omega, trW_1s, trW_12s, eig, K) where {T}
     num = (trW_12s - 2 * eig - (K - 2) * beta) / K
     den = sqrt(
         max(
-            T(0),
-            (Omega[1, 1] - 2 * beta * Omega[1, 2] + beta^2 * Omega[2, 2]) / Omega[2, 2],
-        ),
+        T(0),
+        (Omega[1, 1] - 2 * beta * Omega[1, 2] + beta^2 * Omega[2, 2]) / Omega[2, 2]
+    ),
     )
     return abs(den) < 1e-15 ? T(0) : num / den
 end
 
 function _compute_BGMMf_ols(
-    Omega,
-    trW_1s::T,
-    trW_12s::T,
-    mineig::T,
-    maxeig::T,
-    K::Int,
-    bgmmf_start::T,
+        Omega,
+        trW_1s::T,
+        trW_12s::T,
+        mineig::T,
+        maxeig::T,
+        K::Int,
+        bgmmf_start::T
 ) where {T}
     results = T[]
 
@@ -887,20 +882,20 @@ function _compute_BGMMf_ols(
             if sense == :max
                 beta_opt = _nelder_mead_1d(
                     b -> -_BGMMf_objective_ols(b, Omega, trW_1s, trW_12s, eig, K),
-                    bgmmf_start,
+                    bgmmf_start
                 )
                 push!(
                     results,
-                    abs(_BGMMf_objective_ols(beta_opt, Omega, trW_1s, trW_12s, eig, K)),
+                    abs(_BGMMf_objective_ols(beta_opt, Omega, trW_1s, trW_12s, eig, K))
                 )
             else
                 beta_opt = _nelder_mead_1d(
                     b -> _BGMMf_objective_ols(b, Omega, trW_1s, trW_12s, eig, K),
-                    bgmmf_start,
+                    bgmmf_start
                 )
                 push!(
                     results,
-                    abs(_BGMMf_objective_ols(beta_opt, Omega, trW_1s, trW_12s, eig, K)),
+                    abs(_BGMMf_objective_ols(beta_opt, Omega, trW_1s, trW_12s, eig, K))
                 )
             end
         catch
@@ -1063,7 +1058,7 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
     if same_all
         println(
             io,
-            "  Compare F[effective] or F[robust] to the common critical values below.",
+            "  Compare F[effective] or F[robust] to the common critical values below."
         )
     else
         println(io, "  Compare F[effective] to TSLS/LIML critical values.")
@@ -1071,7 +1066,7 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
     end
     println(
         io,
-        "  If F exceeds the critical value at tau, weak-IV bias is below that tau bound.",
+        "  If F exceeds the critical value at tau, weak-IV bias is below that tau bound."
     )
     println(io)
     println(io, "─" ^ 54)
@@ -1086,38 +1081,31 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
         @printf(io, "%-10s %*s %*s\n", "tau", colw, "TSLS/LIML", colw, "GMMf")
         println(io, "─" ^ 54)
         @printf(io, "%-10s %*.3f %*.3f\n", "tau=5%", colw, r.cv_TSLS[1], colw, r.cv_GMMf[1])
-        @printf(
-            io,
+        @printf(io,
             "%-10s %*.3f %*.3f\n",
             "tau=10%",
             colw,
             r.cv_TSLS[2],
             colw,
-            r.cv_GMMf[2]
-        )
-        @printf(
-            io,
+            r.cv_GMMf[2])
+        @printf(io,
             "%-10s %*.3f %*.3f\n",
             "tau=20%",
             colw,
             r.cv_TSLS[3],
             colw,
-            r.cv_GMMf[3]
-        )
-        @printf(
-            io,
+            r.cv_GMMf[3])
+        @printf(io,
             "%-10s %*.3f %*.3f\n",
             "tau=30%",
             colw,
             r.cv_TSLS[4],
             colw,
-            r.cv_GMMf[4]
-        )
+            r.cv_GMMf[4])
     else
         @printf(io, "%-10s %*s %*s %*s\n", "tau", colw, "TSLS", colw, "LIML", colw, "GMMf")
         println(io, "─" ^ 54)
-        @printf(
-            io,
+        @printf(io,
             "%-10s %*.3f %*.3f %*.3f\n",
             "tau=5%",
             colw,
@@ -1125,10 +1113,8 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
             colw,
             r.cv_LIML[1],
             colw,
-            r.cv_GMMf[1]
-        )
-        @printf(
-            io,
+            r.cv_GMMf[1])
+        @printf(io,
             "%-10s %*.3f %*.3f %*.3f\n",
             "tau=10%",
             colw,
@@ -1136,10 +1122,8 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
             colw,
             r.cv_LIML[2],
             colw,
-            r.cv_GMMf[2]
-        )
-        @printf(
-            io,
+            r.cv_GMMf[2])
+        @printf(io,
             "%-10s %*.3f %*.3f %*.3f\n",
             "tau=20%",
             colw,
@@ -1147,10 +1131,8 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
             colw,
             r.cv_LIML[3],
             colw,
-            r.cv_GMMf[3]
-        )
-        @printf(
-            io,
+            r.cv_GMMf[3])
+        @printf(io,
             "%-10s %*.3f %*.3f %*.3f\n",
             "tau=30%",
             colw,
@@ -1158,8 +1140,7 @@ function Base.show(io::IO, r::WeakIVTestResult{T}) where {T}
             colw,
             r.cv_LIML[4],
             colw,
-            r.cv_GMMf[4]
-        )
+            r.cv_GMMf[4])
     end
     println(io, "─" ^ 54)
 end

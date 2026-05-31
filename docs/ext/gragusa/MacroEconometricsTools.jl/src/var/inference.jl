@@ -9,7 +9,7 @@ Compute standard errors for VAR coefficients.
 
 Returns standard errors in same shape as coefficients.
 """
-function StatsBase.stderror(model::VARModel{T,OLSVAR}) where {T}
+function StatsBase.stderror(model::VARModel{T, OLSVAR}) where {T}
     n_obs_val = effective_obs(model)
     n_vars_val = n_vars(model)
     n_lags_val = n_lags(model)
@@ -44,7 +44,7 @@ Compute confidence intervals for VAR coefficients.
 # Returns
 - NamedTuple with `lower` and `upper` matrices
 """
-function StatsBase.confint(model::VARModel{T,OLSVAR}; level::Float64 = 0.95) where {T}
+function StatsBase.confint(model::VARModel{T, OLSVAR}; level::Float64 = 0.95) where {T}
     coef_est = coef(model)
     stderr_est = stderror(model)
 
@@ -81,7 +81,7 @@ where B are the lag coefficients (excluding intercept) and Σ_ε is the residual
 # Returns
 - Covariance matrix of size (n_vars * n_lags * n_vars, n_vars * n_lags * n_vars)
 """
-function coefficient_covariance(model::VARModel{T,OLSVAR}) where {T}
+function coefficient_covariance(model::VARModel{T, OLSVAR}) where {T}
     n_vars_val = n_vars(model)
     n_lags_val = n_lags(model)
     Σ = vcov(model)
@@ -114,7 +114,7 @@ where D is the duplication matrix and D⁺ is its Moore-Penrose pseudoinverse.
 # Returns
 - Covariance matrix of vech(Σ) elements
 """
-function sigma_covariance(model::VARModel{T,OLSVAR}) where {T}
+function sigma_covariance(model::VARModel{T, OLSVAR}) where {T}
     n_obs_val = effective_obs(model)
     n_vars_val = n_vars(model)
     Σ = Matrix(vcov(model))
@@ -151,9 +151,9 @@ This is used in the delta method for computing IRF standard errors.
 - Vector of G matrices, one for each horizon 1:horizon
 """
 function irf_jacobian_matrices(
-    model::VARModel{T,OLSVAR},
-    irf_point::Array{T,3},
-    horizon::Int,
+        model::VARModel{T, OLSVAR},
+        irf_point::Array{T, 3},
+        horizon::Int
 ) where {T}
     n_vars_val = n_vars(model)
     n_lags_val = n_lags(model)
@@ -216,9 +216,9 @@ Based on Lütkepohl (2005), Section 3.7.
 - Covariance array of size (horizon+1, n_vars^2, n_vars^2)
 """
 function irf_effect_covariance(
-    model::VARModel{T,OLSVAR},
-    P::Matrix{T},
-    irf_point::Array{T,3},
+        model::VARModel{T, OLSVAR},
+        P::Matrix{T},
+        irf_point::Array{T, 3}
 ) where {T}
     horizon = size(irf_point, 1) - 1
     n_vars_val = n_vars(model)
@@ -284,9 +284,9 @@ Extracts the square root of diagonal elements of the covariance matrix.
 - Standard error array of size (horizon+1, n_vars, n_vars)
 """
 function irf_asymptotic_stderror(
-    model::VARModel{T,OLSVAR},
-    P::Matrix{T},
-    irf_point::Array{T,3},
+        model::VARModel{T, OLSVAR},
+        P::Matrix{T},
+        irf_point::Array{T, 3}
 ) where {T}
     n_vars_val = n_vars(model)
 

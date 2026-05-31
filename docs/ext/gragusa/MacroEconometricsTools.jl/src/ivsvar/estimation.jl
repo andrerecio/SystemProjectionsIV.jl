@@ -55,18 +55,18 @@ result = irf(model, IVIdentification(); horizon=48)
 ```
 """
 function StatsBase.fit(
-    ::Type{IVSVAR},
-    Y::AbstractMatrix{T},
-    n_lags::Int;
-    instrument::AbstractInstrument,
-    constraints::Vector{<:AbstractConstraint} = AbstractConstraint[],
-    names::Union{Nothing,Vector{Symbol}} = nothing,
-    demean::Bool = false,
-) where {T<:AbstractFloat}
+        ::Type{IVSVAR},
+        Y::AbstractMatrix{T},
+        n_lags::Int;
+        instrument::AbstractInstrument,
+        constraints::Vector{<:AbstractConstraint} = AbstractConstraint[],
+        names::Union{Nothing, Vector{Symbol}} = nothing,
+        demean::Bool = false
+) where {T <: AbstractFloat}
 
     # ── Step 1: Reduced-form VAR ──────────────────────────────────────────
-    var_ols =
-        fit(OLSVAR, Y, n_lags; constraints = constraints, names = names, demean = demean)
+    var_ols = fit(
+        OLSVAR, Y, n_lags; constraints = constraints, names = names, demean = demean)
     ν = residuals(var_ols)                 # (T-p) × n
     n_obs, n = size(ν)
     var_names = var_ols.names
@@ -92,7 +92,7 @@ function StatsBase.fit(
         first_stage_F = F_stat,
         first_stage_coef = π_hat,
         target_shock = target,
-        iv_coefficients = β_iv,
+        iv_coefficients = β_iv
     )
 
     return VARModel(
@@ -104,7 +104,7 @@ function StatsBase.fit(
         var_ols.Σ,
         var_ols.companion,
         var_names,
-        metadata,
+        metadata
     )
 end
 
@@ -117,7 +117,7 @@ end
 
 Trim or pad instrument to match a different residual count (used in bootstrap).
 """
-function _resize_instrument(instrument::ExternalInstrument{T,S}, n_obs::Int) where {T,S}
+function _resize_instrument(instrument::ExternalInstrument{T, S}, n_obs::Int) where {T, S}
     Z = instrument.Z
     n_orig = size(Z, 1)
     if n_orig == n_obs
@@ -127,14 +127,14 @@ function _resize_instrument(instrument::ExternalInstrument{T,S}, n_obs::Int) whe
         return ExternalInstrument(
             Z[1:n_obs, :],
             instrument.target_shock;
-            method = instrument.method,
+            method = instrument.method
         )
     else
         error("Cannot expand instrument from $n_orig to $n_obs rows")
     end
 end
 
-function _resize_instrument(instrument::ProxyIV{T,S}, n_obs::Int) where {T,S}
+function _resize_instrument(instrument::ProxyIV{T, S}, n_obs::Int) where {T, S}
     Z = instrument.proxies
     n_orig = size(Z, 1)
     if n_orig == n_obs
@@ -143,7 +143,7 @@ function _resize_instrument(instrument::ProxyIV{T,S}, n_obs::Int) where {T,S}
         return ProxyIV(
             Z[1:n_obs, :],
             instrument.target_shock;
-            relevance_threshold = instrument.relevance_threshold,
+            relevance_threshold = instrument.relevance_threshold
         )
     else
         error("Cannot expand proxy from $n_orig to $n_obs rows")
@@ -222,8 +222,8 @@ function _resolve_iv(model::VARModel, id::IVIdentification)
     else
         throw(
             ArgumentError(
-                "IVIdentification requires an instrument: use IVIdentification(Z, target_shock)",
-            ),
+            "IVIdentification requires an instrument: use IVIdentification(Z, target_shock)",
+        ),
         )
     end
 end
@@ -243,10 +243,10 @@ are dropped from the start so that Z aligns with VAR residuals (`n_obs` rows).
 If Z already has `n_obs` rows it is used as-is.
 """
 function _extract_instrument(
-    instrument::ExternalInstrument,
-    n_obs::Int,
-    n_lags::Int,
-    names::Vector{Symbol},
+        instrument::ExternalInstrument,
+        n_obs::Int,
+        n_lags::Int,
+        names::Vector{Symbol}
 )
     Z = instrument.Z
     n_z = size(Z, 1)
@@ -259,19 +259,19 @@ function _extract_instrument(
     else
         throw(
             DimensionMismatch(
-                "Instrument has $n_z rows but needs at least $n_obs. " *
-                "Z should have the same number of rows as Y.",
-            ),
+            "Instrument has $n_z rows but needs at least $n_obs. " *
+            "Z should have the same number of rows as Y.",
+        ),
         )
     end
 end
 
 function _extract_instrument(
-    instrument::ProxyIV{T,S},
-    n_obs::Int,
-    n_lags::Int,
-    names::Vector{Symbol},
-) where {T,S}
+        instrument::ProxyIV{T, S},
+        n_obs::Int,
+        n_lags::Int,
+        names::Vector{Symbol}
+) where {T, S}
     Z = instrument.proxies
     n_z = size(Z, 1)
     target = _resolve_target(instrument.target_shock, names)
@@ -282,9 +282,9 @@ function _extract_instrument(
     else
         throw(
             DimensionMismatch(
-                "Proxy has $n_z rows but needs at least $n_obs. " *
-                "Proxy should have the same number of rows as Y.",
-            ),
+            "Proxy has $n_z rows but needs at least $n_obs. " *
+            "Proxy should have the same number of rows as Y.",
+        ),
         )
     end
 end
@@ -351,9 +351,9 @@ Re-estimate a proxy-SVAR model on bootstrap data. Used internally by
 the bootstrap machinery.
 """
 function refit_for_bootstrap(
-    model::VARModel{T,<:IVSVAR},
-    Y_boot::Matrix{T},
-    n_lags_val::Int,
+        model::VARModel{T, <:IVSVAR},
+        Y_boot::Matrix{T},
+        n_lags_val::Int
 ) where {T}
     constraints_arg = model.coefficients.constraints
     constraints_arg = constraints_arg === nothing ? AbstractConstraint[] : constraints_arg
@@ -368,7 +368,7 @@ function refit_for_bootstrap(
         n_lags_val;
         instrument = instrument,
         constraints = constraints_arg,
-        names = model.names,
+        names = model.names
     )
 end
 
@@ -378,9 +378,9 @@ end
 Re-estimate a non-IVSVAR model on bootstrap data. Generic fallback.
 """
 function refit_for_bootstrap(
-    model::VARModel{T},
-    Y_boot::Matrix{T},
-    n_lags_val::Int,
+        model::VARModel{T},
+        Y_boot::Matrix{T},
+        n_lags_val::Int
 ) where {T}
     constraints_arg = model.coefficients.constraints
     constraints_arg = constraints_arg === nothing ? AbstractConstraint[] : constraints_arg
@@ -389,6 +389,6 @@ function refit_for_bootstrap(
         Y_boot,
         n_lags_val;
         constraints = constraints_arg,
-        names = model.names,
+        names = model.names
     )
 end

@@ -31,13 +31,13 @@ function build_block_upper!(dest::Matrix{T}, blocks::Vector, sizes::Vector{Int})
                 # Diagonal block
                 @views dest[
                     (row_offset + 1):(row_offset + ni),
-                    (col_offset + 1):(col_offset + nj),
+                    (col_offset + 1):(col_offset + nj)
                 ] .= block
             else
                 # Off-diagonal block
                 @views dest[
                     (row_offset + 1):(row_offset + ni),
-                    (col_offset + 1):(col_offset + nj),
+                    (col_offset + 1):(col_offset + nj)
                 ] .= block
             end
             col_offset += nj
@@ -68,10 +68,10 @@ end
 # generalized 2inverse
 #actually return minus the symmetric
 function invsym!(
-    X::Symmetric;
-    has_intercept = false,
-    setzeros = false,
-    diagonal = 1:size(X, 2),
+        X::Symmetric;
+        has_intercept = false,
+        setzeros = false,
+        diagonal = 1:size(X, 2)
 )
     tols = max.(diag(X), 1)
     buffer = zeros(size(X, 1))
@@ -130,7 +130,7 @@ After sweeping:
 - `basis::BitVector`: true for non-collinear columns
 - `rank::Int`: Number of non-collinear columns
 """
-function sweep_collinear!(A::Matrix{T}, tol::Real = sqrt(eps(T))) where {T<:AbstractFloat}
+function sweep_collinear!(A::Matrix{T}, tol::Real = sqrt(eps(T))) where {T <: AbstractFloat}
     k = size(A, 1)
     @assert size(A, 2) == k "Matrix must be square"
 
@@ -203,7 +203,8 @@ More memory efficient than QR for large n, small k.
 - `basis::BitVector`: Indicator of non-collinear columns
 - `X_reduced::Matrix{T}`: Matrix with only non-collinear columns
 """
-function detect_collinearity_sweep(X::Matrix{T}; tol::Real = 1e-8) where {T<:AbstractFloat}
+function detect_collinearity_sweep(X::Matrix{T}; tol::Real = 1e-8) where {T <:
+                                                                          AbstractFloat}
     n, k = size(X)
 
     # Handle edge cases
@@ -267,11 +268,11 @@ This matches FixedEffectModels.jl's approach for maximum performance.
 - `beta::Vector{T}`: Full coefficient vector (0 for collinear columns)
 """
 function sweep_solve!(
-    XX::Matrix{T},
-    Xy::Vector{T},
-    has_intercept::Bool;
-    tol::Real = sqrt(eps(T)),
-) where {T<:AbstractFloat}
+        XX::Matrix{T},
+        Xy::Vector{T},
+        has_intercept::Bool;
+        tol::Real = sqrt(eps(T))
+) where {T <: AbstractFloat}
     k = size(XX, 1)
     @assert size(XX, 2) == k "XX must be square"
     @assert length(Xy) == k "Xy must have length k"

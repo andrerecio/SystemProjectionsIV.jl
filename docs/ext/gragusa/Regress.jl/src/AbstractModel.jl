@@ -128,9 +128,9 @@ function StatsAPI.confint(m::AbstractRegressModel; level::Real = 0.95)
 end
 
 function StatsAPI.confint(
-    ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
-    m::AbstractRegressModel;
-    level::Real = 0.95,
+        ve::CovarianceMatrices.AbstractAsymptoticVarianceEstimator,
+        m::AbstractRegressModel;
+        level::Real = 0.95
 )
     scale = tdistinvcdf(dof_residual(m), 1 - (1 - level) / 2)
     se = CovarianceMatrices.stderror(ve, m)
@@ -171,7 +171,7 @@ function StatsAPI.coeftable(m::AbstractRegressModel; level = 0.95)
         hcat(cc, se, tt, pv, conf_int[:, 1:2]),
         ["Estimate", "Std. Error", "t-stat", "Pr(>|t|)", "Lower 95%", "Upper 95%"],
         ["$(coefnms[i])" for i in 1:length(cc)],
-        4,
+        4
     )
 end
 
@@ -186,15 +186,13 @@ function _summary_table_common(m::AbstractRegressModel)
     F_val = m.F
     p_val = m.p
 
-    out = [
-        "Number of obs" sprint(show, nobs(m), context = :compact => true);
-        "dof (model)" sprint(show, dof(m), context = :compact => true);
-        "dof (residuals)" sprint(show, dof_residual(m), context = :compact => true);
-        "R²" @sprintf("%.3f", r2(m));
-        "R² adjusted" @sprintf("%.3f", adjr2(m));
-        "F-statistic" sprint(show, F_val, context = :compact => true);
-        "P-value" @sprintf("%.3f", p_val);
-    ]
+    out = ["Number of obs" sprint(show, nobs(m), context = :compact => true);
+           "dof (model)" sprint(show, dof(m), context = :compact => true);
+           "dof (residuals)" sprint(show, dof_residual(m), context = :compact => true);
+           "R²" @sprintf("%.3f", r2(m));
+           "R² adjusted" @sprintf("%.3f", adjr2(m));
+           "F-statistic" sprint(show, F_val, context = :compact => true);
+           "P-value" @sprintf("%.3f", p_val);]
 
     if has_fe(m)
         out = vcat(out, ["R² within" @sprintf("%.3f", m.r2_within)])

@@ -47,7 +47,8 @@ Use `ols(df, formula)` to fit this model type.
 - `F::T`: F-statistic (computed with vcov_estimator)
 - `p::T`: P-value of F-statistic
 """
-struct OLSEstimator{T<:AbstractFloat,P<:OLSLinearPredictor{T},V} <: AbstractRegressModel
+struct OLSEstimator{T <: AbstractFloat, P <: OLSLinearPredictor{T}, V} <:
+       AbstractRegressModel
     # Core GLM-style components
     rr::OLSResponse{T}              # Response object
     pp::P                           # Predictor object (Chol or QR)
@@ -58,7 +59,7 @@ struct OLSEstimator{T<:AbstractFloat,P<:OLSLinearPredictor{T},V} <: AbstractRegr
     # Formula and metadata
     formula::FormulaTerm
     formula_schema::FormulaTerm
-    contrasts::Dict{Symbol,Any}
+    contrasts::Dict{Symbol, Any}
 
     # Sample information
     esample::BitVector              # Which observations used
@@ -85,7 +86,7 @@ struct OLSEstimator{T<:AbstractFloat,P<:OLSLinearPredictor{T},V} <: AbstractRegr
 
     # Variance-covariance estimator and precomputed statistics
     vcov_estimator::V                        # Deep copy of the estimator
-    vcov_matrix::Symmetric{T,Matrix{T}}    # Precomputed vcov matrix
+    vcov_matrix::Symmetric{T, Matrix{T}}    # Precomputed vcov matrix
     se::Vector{T}                            # Standard errors
     t_stats::Vector{T}                       # t-statistics
     p_values::Vector{T}                      # p-values
@@ -153,7 +154,7 @@ vcov(HC1(), model)
 stderror(model)  # Uses precomputed vcov
 ```
 """
-struct OLSMatrixEstimator{T<:AbstractFloat,P<:OLSLinearPredictor{T},V} <:
+struct OLSMatrixEstimator{T <: AbstractFloat, P <: OLSLinearPredictor{T}, V} <:
        AbstractRegressModel
     rr::OLSResponse{T}              # Response object
     pp::P                           # Predictor object (Chol or QR)
@@ -168,7 +169,7 @@ struct OLSMatrixEstimator{T<:AbstractFloat,P<:OLSLinearPredictor{T},V} <:
 
     # Variance-covariance estimator and precomputed statistics
     vcov_estimator::V                        # Deep copy of the estimator
-    vcov_matrix::Symmetric{T,Matrix{T}}    # Precomputed vcov matrix
+    vcov_matrix::Symmetric{T, Matrix{T}}    # Precomputed vcov matrix
     se::Vector{T}                            # Standard errors
     t_stats::Vector{T}                       # t-statistics
     p_values::Vector{T}                      # p-values
@@ -263,12 +264,12 @@ end
 
 Create a new model with a different variance-covariance estimator.
 """
-function Base.:+(m::OLSMatrixEstimator{T,P,V1}, v::VcovSpec{V2}) where {T,P,V1,V2}
+function Base.:+(m::OLSMatrixEstimator{T, P, V1}, v::VcovSpec{V2}) where {T, P, V1, V2}
     vcov_mat = StatsBase.vcov(v.source, m)
     se, t_stats, p_values, _, _ = _calculate_vcov_stats(m, vcov_mat)
     vcov_copy = deepcopy_vcov(v.source)
 
-    return OLSMatrixEstimator{T,P,V2}(
+    return OLSMatrixEstimator{T, P, V2}(
         m.rr,
         m.pp,
         m.basis_coef,
@@ -283,7 +284,7 @@ function Base.:+(m::OLSMatrixEstimator{T,P,V1}, v::VcovSpec{V2}) where {T,P,V1,V
         Symmetric(vcov_mat),
         se,
         t_stats,
-        p_values,
+        p_values
     )
 end
 
@@ -385,8 +386,8 @@ function StatsAPI.predict(m::OLSEstimator{T}, data) where {T}
 
     has_cont_fe_interaction(m.formula) && throw(
         ArgumentError(
-            "Interaction of fixed effect and continuous variable detected in formula; this is currently not supported in `predict`",
-        ),
+        "Interaction of fixed effect and continuous variable detected in formula; this is currently not supported in `predict`",
+    ),
     )
 
     cdata = Tables.columntable(data)
@@ -402,24 +403,24 @@ end
 
 # Type-stable inner function for OLS predict
 function _predict_ols_impl(
-    Xnew::AbstractMatrix,
-    coef_valid::AbstractVector{T},
-    nonmissings::AbstractVector{Bool},
-    basis_coef::BitVector,
-    m::OLSEstimator{T},
-    data,
-    ::Type{T},
+        Xnew::AbstractMatrix,
+        coef_valid::AbstractVector{T},
+        nonmissings::AbstractVector{Bool},
+        basis_coef::BitVector,
+        m::OLSEstimator{T},
+        data,
+        ::Type{T}
 ) where {T}
     n = length(nonmissings)
     # Always allocate with Union type for consistent return type
-    out = Vector{Union{T,Missing}}(missing, n)
+    out = Vector{Union{T, Missing}}(missing, n)
     @views out[nonmissings] .= Xnew[:, basis_coef] * coef_valid
 
     if has_fe(m)
         nrow(fe(m)) > 0 || throw(
             ArgumentError(
-                "Model has no estimated fixed effects. To store estimates of fixed effects, run `ols` with the option save = :fe",
-            ),
+            "Model has no estimated fixed effects. To store estimates of fixed effects, run `ols` with the option save = :fe",
+        ),
         )
 
         df = DataFrame(data; copycols = false)
@@ -429,7 +430,7 @@ function _predict_ols_impl(
             on = m.fes.fe_names,
             makeunique = true,
             matchmissing = :equal,
-            order = :left,
+            order = :left
         )
         fes = combine(fes, AsTable(Not(m.fes.fe_names)) => sum)
 
@@ -460,16 +461,16 @@ end
 
 # Type-stable inner function for OLS residuals
 function _residuals_ols_impl(
-    y::AbstractVector,
-    Xnew::AbstractMatrix,
-    coef_valid::AbstractVector{T},
-    nonmissings::AbstractVector{Bool},
-    basis_coef::BitVector,
-    ::Type{T},
+        y::AbstractVector,
+        Xnew::AbstractMatrix,
+        coef_valid::AbstractVector{T},
+        nonmissings::AbstractVector{Bool},
+        basis_coef::BitVector,
+        ::Type{T}
 ) where {T}
     n = length(nonmissings)
     # Always allocate with Union type for consistent return type
-    out = Vector{Union{T,Missing}}(missing, n)
+    out = Vector{Union{T, Missing}}(missing, n)
     @views out[nonmissings] .= y .- Xnew[:, basis_coef] * coef_valid
     return out
 end
@@ -519,7 +520,7 @@ function StatsAPI.coeftable(m::OLSEstimator; level = 0.95)
         hcat(cc, se, tt, pv, conf_int[:, 1:2]),
         ["Estimate", "Std. Error", "t-stat", "Pr(>|t|)", "Lower 95%", "Upper 95%"],
         ["$(coefnms[i])" for i in 1:length(cc)],
-        4,
+        4
     )
 end
 
@@ -561,13 +562,12 @@ function Base.show(io::IO, m::OLSEstimator)
     if length(rownms) == 0
         rownms = [lpad("[$i]", floor(Integer, log10(nr))+3) for i in 1:nr]
     end
-    mat = [
-        j == 1 ? NoQuote(rownms[i]) :
-        j-1 == ct.pvalcol ? NoQuote(sprint(show, PValue(cols[j - 1][i]))) :
-        j-1 in ct.teststatcol ? TestStat(cols[j - 1][i]) :
-        cols[j - 1][i] isa AbstractString ? NoQuote(cols[j - 1][i]) : cols[j - 1][i] for
-        i in 1:nr, j in 1:(nc + 1)
-    ]
+    mat = [j == 1 ? NoQuote(rownms[i]) :
+           j-1 == ct.pvalcol ? NoQuote(sprint(show, PValue(cols[j - 1][i]))) :
+           j-1 in ct.teststatcol ? TestStat(cols[j - 1][i]) :
+           cols[j - 1][i] isa AbstractString ? NoQuote(cols[j - 1][i]) : cols[j - 1][i]
+           for
+           i in 1:nr, j in 1:(nc + 1)]
     io = IOContext(io, :compact=>true, :limit=>false)
     A = Base.alignment(
         io,
@@ -576,13 +576,12 @@ function Base.show(io::IO, m::OLSEstimator)
         1:size(mat, 2),
         typemax(Int),
         typemax(Int),
-        3,
+        3
     )
     nmswidths = pushfirst!(length.(colnms), 0)
-    A = [
-        nmswidths[i] > sum(A[i]) ? (A[i][1]+nmswidths[i]-sum(A[i]), A[i][2]) : A[i] for
-        i in 1:length(A)
-    ]
+    A = [nmswidths[i] > sum(A[i]) ? (A[i][1]+nmswidths[i]-sum(A[i]), A[i][2]) : A[i]
+         for
+         i in 1:length(A)]
     totwidth = compute_table_width(A, colnms)
 
     # Title: OLS, right-aligned, yellow
@@ -592,8 +591,8 @@ function Base.show(io::IO, m::OLSEstimator)
             io,
             lpad(
                 ANSI_YELLOW * ctitle * ANSI_RESET,
-                totwidth - 2 + length(ANSI_YELLOW) + length(ANSI_RESET),
-            ),
+                totwidth - 2 + length(ANSI_YELLOW) + length(ANSI_RESET)
+            )
         )
     else
         print(io, lpad(ctitle, totwidth - 2))
@@ -686,8 +685,8 @@ function Base.show(io::IO, ::MIME"text/html", m::OLSEstimator)
             "",
             "",
             "",
-            "",
-        ],
+            ""
+        ]
     )
     html_tfoot_end(io)
 
@@ -700,10 +699,10 @@ end
 ##
 ##############################################################################
 function StatsModels.apply_schema(
-    t::FormulaTerm,
-    schema::StatsModels.Schema,
-    Mod::Type{<:OLSEstimator},
-    has_fe_intercept,
+        t::FormulaTerm,
+        schema::StatsModels.Schema,
+        Mod::Type{<:OLSEstimator},
+        has_fe_intercept
 )
     schema = StatsModels.FullRank(schema)
     if has_fe_intercept
@@ -711,7 +710,7 @@ function StatsModels.apply_schema(
     end
     FormulaTerm(
         apply_schema(t.lhs, schema.schema, StatisticalModel),
-        StatsModels.collect_matrix_terms(apply_schema(t.rhs, schema, StatisticalModel)),
+        StatsModels.collect_matrix_terms(apply_schema(t.rhs, schema, StatisticalModel))
     )
 end
 
@@ -746,7 +745,7 @@ model_cr1 = model_cr + vcov(CR1(:firm))
 
 See also: [`VcovSpec`](@ref)
 """
-function Base.:+(m::OLSEstimator{T,P,V1}, v::VcovSpec{V2}) where {T,P,V1,V2}
+function Base.:+(m::OLSEstimator{T, P, V1}, v::VcovSpec{V2}) where {T, P, V1, V2}
     # Compute vcov matrix using StatsBase.vcov (which dispatches to covariance.jl methods)
     vcov_mat = StatsBase.vcov(v.source, m)
 
@@ -757,7 +756,7 @@ function Base.:+(m::OLSEstimator{T,P,V1}, v::VcovSpec{V2}) where {T,P,V1,V2}
     vcov_copy = deepcopy_vcov(v.source)
 
     # Return new OLSEstimator with same data but different vcov type
-    return OLSEstimator{T,P,V2}(
+    return OLSEstimator{T, P, V2}(
         m.rr,
         m.pp,
         m.fes,
@@ -783,6 +782,6 @@ function Base.:+(m::OLSEstimator{T,P,V1}, v::VcovSpec{V2}) where {T,P,V1,V2}
         t_stats,
         p_values,
         F_stat,
-        p_val,
+        p_val
     )
 end

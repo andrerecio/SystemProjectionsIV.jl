@@ -25,7 +25,7 @@ k = Bartlett()
 V = avar(k, X; prewhite=true)
 ```
 """
-function avar(k::K, X::AbstractMatrix{F}; prewhite = false) where {K<:HAC,F<:Real}
+function avar(k::K, X::AbstractMatrix{F}; prewhite = false) where {K <: HAC, F <: Real}
     Z, D = finalize_prewhite(X, Val(prewhite))
     T, p = size(Z)
     setkernelweights!(k, X)
@@ -110,7 +110,7 @@ where:
 #     return V
 # end
 
-function kernelestimator!(k::K, V::AbstractMatrix{F}, Q, Z) where {K<:HAC,F<:Real}
+function kernelestimator!(k::K, V::AbstractMatrix{F}, Q, Z) where {K <: HAC, F <: Real}
     T, _ = size(Z)
     idx = covindices(k, T)
     bw = convert(F, k.bw[1])
@@ -173,10 +173,10 @@ Different kernels use different lag ranges:
 - `Bartlett`: Truncated at bandwidth
 - `HR`: No lags (0 lags)
 """
-covindices(k::T, n) where {T<:QuadraticSpectral} = 1:n
-covindices(k::T, n) where {T<:Bartlett} = 1:(floor(Int, k.bw[1]))
+covindices(k::T, n) where {T <: QuadraticSpectral} = 1:n
+covindices(k::T, n) where {T <: Bartlett} = 1:(floor(Int, k.bw[1]))
 covindices(k::HAC, n) = 1:floor(Int, k.bw[1])
-covindices(k::T, n) where {T<:HR} = 1:0
+covindices(k::T, n) where {T <: HR} = 1:0
 # -----------------------------------------------------------------------------
 # Kernels
 # -----------------------------------------------------------------------------
@@ -252,18 +252,19 @@ The field `k.kw` is updated in-place with column weights. If weights are locked 
 """
 
 function setkernelweights!(
-    k::HAC{T},
-    m::RegressionModel,
-) where {T<:Union{Andrews,NeweyWest}}
+        k::HAC{T},
+        m::RegressionModel
+) where {T <: Union{Andrews, NeweyWest}}
     setkernelweights!(k, modelmatrix(m))
 end
 
-function setkernelweights!(k::HAC{T}, X::AbstractMatrix) where {T<:Union{Andrews,NeweyWest}}
+function setkernelweights!(k::HAC{T}, X::AbstractMatrix) where {T <:
+                                                                Union{Andrews, NeweyWest}}
     if k.wlock[1]
         length(k.kw) == size(X, 2) || throw(
             DimensionMismatch(
-                "The number of columns in X must match the number of kernel weights, got $(length(k.kw)) weights for $(size(X, 2)) columns",
-            ),
+            "The number of columns in X must match the number of kernel weights, got $(length(k.kw)) weights for $(size(X, 2)) columns",
+        ),
         )
     else
         resize!(k.kw, size(X, 2))
@@ -289,7 +290,7 @@ end
 
 No-op for fixed bandwidth kernels and other estimators.
 """
-setkernelweights!(k::HAC{T}, X) where {T<:Fixed} = nothing
+setkernelweights!(k::HAC{T}, X) where {T <: Fixed} = nothing
 setkernelweights!(k::AbstractAsymptoticVarianceEstimator, X) = nothing
 
 # -----------------------------------------------------------------------------
@@ -304,10 +305,10 @@ Internal function to compute optimal bandwidth with pre-whitening.
 - Tuple: (processed data matrix, VAR coefficient matrix, bandwidth)
 """
 function workingoptimalbw(
-    k::HAC{T},
-    A::AbstractMatrix;
-    prewhite::Bool = false,
-) where {T<:Union{Andrews,NeweyWest}}
+        k::HAC{T},
+        A::AbstractMatrix;
+        prewhite::Bool = false
+) where {T <: Union{Andrews, NeweyWest}}
     X, D = prewhiter(A, prewhite)
     setkernelweights!(k, X)
     bw = _optimalbandwidth(k, X, prewhite)
@@ -319,7 +320,7 @@ end
 
 For fixed bandwidth kernels, return data and pre-set bandwidth.
 """
-function workingoptimalbw(k::HAC{T}, m::AbstractMatrix; kwargs...) where {T<:Fixed}
+function workingoptimalbw(k::HAC{T}, m::AbstractMatrix; kwargs...) where {T <: Fixed}
     return (m, Matrix{eltype{m}}(undef, 0, 0), first(k.bw))
 end
 
@@ -352,24 +353,24 @@ Newey, W.K. and West, K.D. (1994). Automatic Lag Selection in Covariance
 Matrix Estimation. Review of Economic Studies, 61(4), 631-653.
 """
 function optimalbw(
-    k::HAC{T},
-    m::AbstractMatrix;
-    demean::Bool = false,
-    dims::Int = 1,
-    means::Union{Nothing,AbstractArray} = nothing,
-    prewhite::Bool = false,
-) where {T<:Union{Andrews,NeweyWest}}
+        k::HAC{T},
+        m::AbstractMatrix;
+        demean::Bool = false,
+        dims::Int = 1,
+        means::Union{Nothing, AbstractArray} = nothing,
+        prewhite::Bool = false
+) where {T <: Union{Andrews, NeweyWest}}
     X = demean ? demeaner(m; means = means, dims = dims) : m
     _, _, bw = workingoptimalbw(k, X; prewhite = prewhite)
     return bw
 end
 
-function _optimalbandwidth(k::HAC{T}, mm, prewhite) where {T<:NeweyWest}
+function _optimalbandwidth(k::HAC{T}, mm, prewhite) where {T <: NeweyWest}
     return bwNeweyWest(k, mm, prewhite)
 end
 
-_optimalbandwidth(k::HAC{T}, mm, prewhite) where {T<:Andrews} = bwAndrews(k, mm, prewhite)
-_optimalbandwidth(k::HAC{T}, mm, prewhite) where {T<:Fixed} = first(k.bw)
+_optimalbandwidth(k::HAC{T}, mm, prewhite) where {T <: Andrews} = bwAndrews(k, mm, prewhite)
+_optimalbandwidth(k::HAC{T}, mm, prewhite) where {T <: Fixed} = first(k.bw)
 
 """
     bwAndrews(k::HAC, mm::AbstractMatrix, prewhite::Bool)
@@ -407,11 +408,10 @@ function bwNeweyWest(k::HAC, mm, prewhite::Bool)
     xm = mm * w
     a = Vector{eltype(xm)}(undef, l + 1)
     @inbounds for j in 0:l
-        a[j + 1] =
-            dot(
-                view(xm, firstindex(xm):(lastindex(xm) - j)),
-                view(xm, (j + firstindex(xm)):lastindex(xm)),
-            ) / n
+        a[j + 1] = dot(
+            view(xm, firstindex(xm):(lastindex(xm) - j)),
+            view(xm, (j + firstindex(xm)):lastindex(xm))
+        ) / n
     end
     aa = view(a, 2:(l + 1))
     a0 = a[1] + 2 * sum(aa)
@@ -430,7 +430,7 @@ d_bw_andrews = Dict(
     :Bartlett => :(1.1447 * (a1 * n)^(1 / 3)),
     :Parzen => :(2.6614 * (a2 * n)^(0.2)),
     :TukeyHanning => :(1.7462 * (a2 * n)^(0.2)),
-    :QuadraticSpectral => :(1.3221 * (a2 * n)^(0.2)),
+    :QuadraticSpectral => :(1.3221 * (a2 * n)^(0.2))
 )
 
 for kerneltype in kernels
@@ -587,7 +587,7 @@ end
 # -----------------------------------------------------------------------------
 # Prewhiter
 # -----------------------------------------------------------------------------
-function prewhiter(M::AbstractMatrix{T}, prewhite::Bool) where {T<:Real}
+function prewhiter(M::AbstractMatrix{T}, prewhite::Bool) where {T <: Real}
     if prewhite
         return fit_var(M)
     else

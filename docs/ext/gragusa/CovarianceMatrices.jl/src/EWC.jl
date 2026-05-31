@@ -1,4 +1,4 @@
-function Λ!(L::AbstractVector{F}, j::Integer, m::AbstractMatrix{F}) where {F<:Real}
+function Λ!(L::AbstractVector{F}, j::Integer, m::AbstractMatrix{F}) where {F <: Real}
     T, p = size(m)
     fill!(L, zero(F))
 
@@ -17,13 +17,13 @@ function Λ!(L::AbstractVector{F}, j::Integer, m::AbstractMatrix{F}) where {F<:R
 end
 
 # Non-mutating version
-function Λ(j::Integer, m::AbstractMatrix{F}) where {F<:AbstractFloat}
+function Λ(j::Integer, m::AbstractMatrix{F}) where {F <: AbstractFloat}
     T, p = size(m)
     L = zeros(F, p)
     return Λ!(L, j, m)
 end
 
-function avar(k::EWC, X::AbstractMatrix{F}; prewhite = false) where {F<:Real}
+function avar(k::EWC, X::AbstractMatrix{F}; prewhite = false) where {F <: Real}
     Z, D = finalize_prewhite(X, Val(prewhite))
 
     B = k.B

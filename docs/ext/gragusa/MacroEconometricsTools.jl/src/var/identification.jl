@@ -124,12 +124,12 @@ P = rotation_matrix(model, id; max_draws=50000, parallel=:distributed)
 ```
 """
 function rotation_matrix(
-    model::VARModel{T},
-    id::SignRestriction;
-    max_draws::Int = 10000,
-    parallel::Symbol = :none,
-    verbose::Bool = false,
-    rng::AbstractRNG = Random.default_rng(),
+        model::VARModel{T},
+        id::SignRestriction;
+        max_draws::Int = 10000,
+        parallel::Symbol = :none,
+        verbose::Bool = false,
+        rng::AbstractRNG = Random.default_rng()
 ) where {T}
     parallel ∈ [:none, :distributed] ||
         throw(ArgumentError("parallel must be :none or :distributed"))
@@ -147,11 +147,11 @@ end
 Serial sign restriction search.
 """
 function identify_sign_serial(
-    model::VARModel{T},
-    id::SignRestriction,
-    max_draws::Int,
-    verbose::Bool,
-    rng::AbstractRNG,
+        model::VARModel{T},
+        id::SignRestriction,
+        max_draws::Int,
+        verbose::Bool,
+        rng::AbstractRNG
 ) where {T}
     n_vars_val = n_vars(model)
     Σ = vcov(model)
@@ -182,8 +182,8 @@ function identify_sign_serial(
 
     throw(
         ErrorException(
-            "Could not find impact matrix satisfying sign restrictions after $max_draws attempts",
-        ),
+        "Could not find impact matrix satisfying sign restrictions after $max_draws attempts",
+    ),
     )
 end
 
@@ -195,11 +195,11 @@ Distributed sign restriction search using multiple processes.
 Divides search across workers and stops when first valid rotation is found.
 """
 function identify_sign_distributed(
-    model::VARModel{T},
-    id::SignRestriction,
-    max_draws::Int,
-    verbose::Bool,
-    rng::AbstractRNG,
+        model::VARModel{T},
+        id::SignRestriction,
+        max_draws::Int,
+        verbose::Bool,
+        rng::AbstractRNG
 ) where {T}
 
     # Check if Distributed is available
@@ -221,7 +221,7 @@ function identify_sign_distributed(
 
     # Function to search for valid rotation (returns nothing if not found)
     # Takes (n_attempts, worker_id, base_seed) for independent streams
-    function search_rotations(work_info::Tuple{Int,Int,UInt64})
+    function search_rotations(work_info::Tuple{Int, Int, UInt64})
         n_attempts, worker_id, base_seed = work_info
 
         # Create worker-specific seed using base seed and worker ID
@@ -249,8 +249,8 @@ function identify_sign_distributed(
     end
 
     base_seed = rand(rng, UInt64)
-    work_specs =
-        [(draws_per_worker[i], i, base_seed) for i in 1:n_w if draws_per_worker[i] > 0]
+    work_specs = [(draws_per_worker[i], i, base_seed)
+                  for i in 1:n_w if draws_per_worker[i] > 0]
     active_workers = length(work_specs)
 
     if verbose
@@ -279,8 +279,8 @@ function identify_sign_distributed(
     total_attempts = sum(draws_per_worker)
     throw(
         ErrorException(
-            "Could not find impact matrix satisfying sign restrictions after $total_attempts attempts across $active_workers workers",
-        ),
+        "Could not find impact matrix satisfying sign restrictions after $total_attempts attempts across $active_workers workers",
+    ),
     )
 end
 
@@ -314,10 +314,10 @@ Check if impact matrix satisfies sign restrictions.
 - `true` if restrictions are satisfied
 """
 function check_sign_restrictions(
-    P::Matrix{T},
-    restrictions::Matrix{Int},
-    model::VARModel,
-    horizon::Int,
+        P::Matrix{T},
+        restrictions::Matrix{Int},
+        model::VARModel,
+        horizon::Int
 ) where {T}
     n_vars_val = size(P, 1)
 

@@ -36,14 +36,14 @@ For MLikeModel + Information:
 - `Matrix{Float64}`: Variance-covariance matrix (Fisher Information inverse)
 """
 function StatsAPI.vcov(
-    ve::AbstractAsymptoticVarianceEstimator,
-    form::Information,
-    model::MLikeModel;
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    check::Bool = true,
-    warn::Bool = true,
+        ve::AbstractAsymptoticVarianceEstimator,
+        form::Information,
+        model::MLikeModel;
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        check::Bool = true,
+        warn::Bool = true
 )
     if check
         _check_model_interface(model)
@@ -60,7 +60,7 @@ function StatsAPI.vcov(
             cond_atol = cond_atol,
             cond_rtol = cond_rtol,
             debug = debug,
-            warn = warn,
+            warn = warn
         )
     else
         # Fall back to cross_score: V = inv(G)
@@ -70,7 +70,7 @@ function StatsAPI.vcov(
             cond_atol = cond_atol,
             cond_rtol = cond_rtol,
             debug = debug,
-            warn = warn,
+            warn = warn
         )
     end
 
@@ -101,14 +101,14 @@ Both hessian_objective (H) and cross_score (G) are required.
 - `Matrix{Float64}`: Robust sandwich variance-covariance matrix
 """
 function StatsAPI.vcov(
-    ve::AbstractAsymptoticVarianceEstimator,
-    form::Misspecified,
-    model::MLikeModel;
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    check::Bool = true,
-    warn::Bool = true,
+        ve::AbstractAsymptoticVarianceEstimator,
+        form::Misspecified,
+        model::MLikeModel;
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        check::Bool = true,
+        warn::Bool = true
 )
     if check
         _check_model_interface(model)
@@ -124,8 +124,8 @@ function StatsAPI.vcov(
     if H === nothing
         throw(
             ArgumentError(
-                "Misspecified form for MLikeModel requires hessian_objective to be implemented",
-            ),
+            "Misspecified form for MLikeModel requires hessian_objective to be implemented",
+        ),
         )
     end
 
@@ -136,7 +136,7 @@ function StatsAPI.vcov(
         cond_atol = cond_atol,
         cond_rtol = cond_rtol,
         debug = debug,
-        warn = warn,
+        warn = warn
     )
 
     return V
@@ -170,15 +170,15 @@ This is the efficient GMM variance formula.
 - `Matrix{Float64}`: Efficient GMM variance-covariance matrix
 """
 function StatsAPI.vcov(
-    ve::AbstractAsymptoticVarianceEstimator,
-    form::Information,
-    model::GMMLikeModel;
-    W::Union{Nothing,AbstractMatrix} = nothing,
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    check::Bool = true,
-    warn::Bool = true,
+        ve::AbstractAsymptoticVarianceEstimator,
+        form::Information,
+        model::GMMLikeModel;
+        W::Union{Nothing, AbstractMatrix} = nothing,
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        check::Bool = true,
+        warn::Bool = true
 )
     if check
         _check_model_interface(model)
@@ -203,7 +203,7 @@ function StatsAPI.vcov(
             cond_atol = cond_atol,
             cond_rtol = cond_rtol,
             debug = debug,
-            warn = warn,
+            warn = warn
         )
     else
         # Suboptimal GMM with provided weight matrix
@@ -215,7 +215,7 @@ function StatsAPI.vcov(
             cond_atol = cond_atol,
             cond_rtol = cond_rtol,
             debug = debug,
-            warn = warn,
+            warn = warn
         )
     end
 
@@ -248,15 +248,15 @@ Requires both hessian_objective (H) and cross_score (G).
 - `Matrix{Float64}`: Robust GMM variance-covariance matrix
 """
 function StatsAPI.vcov(
-    ve::AbstractAsymptoticVarianceEstimator,
-    form::Misspecified,
-    model::GMMLikeModel;
-    W::Union{Nothing,AbstractMatrix} = nothing,
-    cond_atol::Union{Nothing,Real} = nothing,
-    cond_rtol::Union{Nothing,Real} = nothing,
-    debug::Bool = false,
-    check::Bool = true,
-    warn::Bool = true,
+        ve::AbstractAsymptoticVarianceEstimator,
+        form::Misspecified,
+        model::GMMLikeModel;
+        W::Union{Nothing, AbstractMatrix} = nothing,
+        cond_atol::Union{Nothing, Real} = nothing,
+        cond_rtol::Union{Nothing, Real} = nothing,
+        debug::Bool = false,
+        check::Bool = true,
+        warn::Bool = true
 )
     if check
         _check_model_interface(model)
@@ -273,8 +273,8 @@ function StatsAPI.vcov(
     if H === nothing
         throw(
             ArgumentError(
-                "Misspecified form for GMMLikeModel requires hessian_objective to be implemented",
-            ),
+            "Misspecified form for GMMLikeModel requires hessian_objective to be implemented",
+        ),
         )
     end
 
@@ -290,7 +290,7 @@ function StatsAPI.vcov(
         cond_atol = cond_atol,
         cond_rtol = cond_rtol,
         debug = debug,
-        warn = warn,
+        warn = warn
     )
 
     return V

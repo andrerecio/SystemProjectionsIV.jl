@@ -4,7 +4,7 @@ DriscolKraay variance-covariance matrix estimator
 Driscol and Kraay (1998) 
 """
 
-function avar(k::T, X::Matrix{R}; kwargs...) where {T<:DriscollKraay,R<:Real}
+function avar(k::T, X::Matrix{R}; kwargs...) where {T <: DriscollKraay, R <: Real}
     tis = k.tis
     iis = k.iis
     X2 = zeros(eltype(X), tis.ngroups, size(X, 2))

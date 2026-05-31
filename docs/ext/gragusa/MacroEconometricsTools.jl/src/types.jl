@@ -46,7 +46,7 @@ Bayesian VAR estimation specification with prior `P`.
 # Fields
 - `prior::P`: Prior specification (e.g., Minnesota, Normal-Inverse-Wishart)
 """
-struct BayesianVAR{P<:AbstractPrior} <: AbstractVARSpec
+struct BayesianVAR{P <: AbstractPrior} <: AbstractVARSpec
     prior::P
 end
 
@@ -58,7 +58,7 @@ Instrumental Variable Structural VAR specification.
 # Fields
 - `instrument::I`: Instrument specification (external, proxy, high-frequency)
 """
-struct IVSVAR{I<:AbstractInstrument} <: AbstractVARSpec
+struct IVSVAR{I <: AbstractInstrument} <: AbstractVARSpec
     instrument::I
 end
 
@@ -72,10 +72,10 @@ Local projection estimation specification.
 - `lag_selection::Symbol`: Criterion for lag selection (`:aic`, `:bic`, `:cv`)
 """
 struct LocalProjection <: AbstractVARSpec
-    lags::Union{Int,Symbol}
+    lags::Union{Int, Symbol}
     lag_selection::Symbol
 
-    function LocalProjection(lags::Union{Int,Symbol} = :auto; lag_selection::Symbol = :aic)
+    function LocalProjection(lags::Union{Int, Symbol} = :auto; lag_selection::Symbol = :aic)
         lag_selection ∈ [:aic, :bic, :cv] ||
             throw(ArgumentError("lag_selection must be :aic, :bic, or :cv"))
         return new(lags, lag_selection)
@@ -138,22 +138,22 @@ ExternalInstrument(Z, 4)                        # positional (backward compat)
 Accepts vectors or matrices for `Z` (vectors are auto-reshaped to T×1 matrices).
 The `Symbol` target is resolved against `model.names` at estimation time.
 """
-struct ExternalInstrument{T<:AbstractFloat,S<:Union{Int,Symbol}} <: AbstractInstrument
+struct ExternalInstrument{T <: AbstractFloat, S <: Union{Int, Symbol}} <: AbstractInstrument
     Z::Matrix{T}
     target_shock::S
     method::Symbol
 
     function ExternalInstrument(
-        Z::Matrix{T},
-        target_shock::Union{Int,Symbol};
-        method::Symbol = :tsls,
+            Z::Matrix{T},
+            target_shock::Union{Int, Symbol};
+            method::Symbol = :tsls
     ) where {T}
         method ∈ [:tsls, :liml, :fuller] ||
             throw(ArgumentError("method must be :tsls, :liml, or :fuller"))
         if target_shock isa Int
             target_shock > 0 || throw(ArgumentError("target_shock must be positive"))
         end
-        return new{T,typeof(target_shock)}(Z, target_shock, method)
+        return new{T, typeof(target_shock)}(Z, target_shock, method)
     end
 end
 
@@ -179,22 +179,22 @@ ProxyIV(proxies, 2)                             # positional (backward compat)
 
 Accepts vectors or matrices for `proxies` (vectors are auto-reshaped to T×1 matrices).
 """
-struct ProxyIV{T<:AbstractFloat,S<:Union{Int,Symbol}} <: AbstractInstrument
+struct ProxyIV{T <: AbstractFloat, S <: Union{Int, Symbol}} <: AbstractInstrument
     proxies::Matrix{T}
     target_shock::S
     relevance_threshold::Float64
 
     function ProxyIV(
-        proxies::Matrix{T},
-        target_shock::Union{Int,Symbol};
-        relevance_threshold::Float64 = 10.0,
+            proxies::Matrix{T},
+            target_shock::Union{Int, Symbol};
+            relevance_threshold::Float64 = 10.0
     ) where {T}
         if target_shock isa Int
             target_shock > 0 || throw(ArgumentError("target_shock must be positive"))
         end
         relevance_threshold > 0 ||
             throw(ArgumentError("relevance_threshold must be positive"))
-        return new{T,typeof(target_shock)}(proxies, target_shock, relevance_threshold)
+        return new{T, typeof(target_shock)}(proxies, target_shock, relevance_threshold)
     end
 end
 
@@ -228,14 +228,15 @@ Storage structure for VAR coefficients with constraint information.
 - `lags::Array{T,3}`: Lag coefficients (n_vars, n_vars, n_lags)
 - `constraints::C`: Applied constraints (Vector{<:AbstractConstraint} or nothing)
 """
-struct VARCoefficients{T<:AbstractFloat,C<:Union{Nothing,Vector{<:AbstractConstraint}}}
+struct VARCoefficients{
+    T <: AbstractFloat, C <: Union{Nothing, Vector{<:AbstractConstraint}}}
     intercept::Vector{T}
-    lags::Array{T,3}
+    lags::Array{T, 3}
     constraints::C
 end
 
-function VARCoefficients(intercept::Vector{T}, lags::Array{T,3}) where {T}
-    return VARCoefficients{T,Nothing}(intercept, lags, nothing)
+function VARCoefficients(intercept::Vector{T}, lags::Array{T, 3}) where {T}
+    return VARCoefficients{T, Nothing}(intercept, lags, nothing)
 end
 
 # ============================================================================
@@ -262,13 +263,13 @@ Vector Autoregression model.
 - `names::Vector{Symbol}`: Variable names
 - `metadata::NamedTuple`: Additional model information
 """
-struct VARModel{T<:AbstractFloat,S<:AbstractVARSpec}
+struct VARModel{T <: AbstractFloat, S <: AbstractVARSpec}
     spec::S
     Y::Matrix{T}
     X::Matrix{T}
     coefficients::VARCoefficients{T}
     residuals::Matrix{T}
-    Σ::Symmetric{T,Matrix{T}}
+    Σ::Symmetric{T, Matrix{T}}
     companion::Matrix{T}
     names::Vector{Symbol}
     metadata::NamedTuple
@@ -294,7 +295,7 @@ Cholesky (recursive) identification scheme.
 - `ordering::Union{Nothing,Vector{Symbol}}`: Variable ordering (nothing = use data order)
 """
 struct CholeskyID <: AbstractIdentification
-    ordering::Union{Nothing,Vector{Symbol}}
+    ordering::Union{Nothing, Vector{Symbol}}
 end
 
 CholeskyID() = CholeskyID(nothing)
@@ -334,7 +335,7 @@ when the model was estimated with `fit(IVSVAR, ...)`.
 - `IVIdentification(instrument::AbstractInstrument)` — wrap an ExternalInstrument or ProxyIV
 - `IVIdentification()` — backward compat (requires IVSVAR model)
 """
-struct IVIdentification{I<:Union{Nothing,AbstractInstrument}} <: AbstractIdentification
+struct IVIdentification{I <: Union{Nothing, AbstractInstrument}} <: AbstractIdentification
     instrument::I
 end
 
@@ -342,27 +343,27 @@ IVIdentification() = IVIdentification{Nothing}(nothing)
 
 # Keyword-based constructors (new API)
 function IVIdentification(
-    Z::AbstractVecOrMat{T};
-    target_shock::Union{Int,Symbol} = 1,
-    method::Symbol = :tsls,
-) where {T<:AbstractFloat}
+        Z::AbstractVecOrMat{T};
+        target_shock::Union{Int, Symbol} = 1,
+        method::Symbol = :tsls
+) where {T <: AbstractFloat}
     IVIdentification(ExternalInstrument(Z; target_shock = target_shock, method = method))
 end
 
 # Positional backward compat
 function IVIdentification(
-    Z::AbstractVector{T},
-    target::Int;
-    method::Symbol = :tsls,
-) where {T<:AbstractFloat}
+        Z::AbstractVector{T},
+        target::Int;
+        method::Symbol = :tsls
+) where {T <: AbstractFloat}
     IVIdentification(ExternalInstrument(Z, target; method = method))
 end
 
 function IVIdentification(
-    Z::AbstractMatrix{T},
-    target::Int;
-    method::Symbol = :tsls,
-) where {T<:AbstractFloat}
+        Z::AbstractMatrix{T},
+        target::Int;
+        method::Symbol = :tsls
+) where {T <: AbstractFloat}
     IVIdentification(ExternalInstrument(Z, target; method = method))
 end
 
@@ -505,9 +506,9 @@ struct BlockBootstrap <: InferenceType
     save_draws::Bool
 
     function BlockBootstrap(
-        reps::Int = 1000;
-        block_length::Int = 10,
-        save_draws::Bool = false,
+            reps::Int = 1000;
+            block_length::Int = 10,
+            save_draws::Bool = false
     )
         reps > 0 || throw(ArgumentError("reps must be positive"))
         block_length > 0 || throw(ArgumentError("block_length must be positive"))
@@ -552,17 +553,17 @@ struct ProxySVARMBB <: InferenceType
     reps::Int
     block_length::Int
     compute_ar::Bool
-    ar_grid::Union{Nothing,Vector{Float64}}
+    ar_grid::Union{Nothing, Vector{Float64}}
     norm_scale::Float64
     save_draws::Bool
 
     function ProxySVARMBB(
-        reps::Int = 2000;
-        block_length::Int = 4,
-        compute_ar::Bool = false,
-        ar_grid::Union{Nothing,Vector{Float64}} = nothing,
-        norm_scale::Float64 = -1.0,
-        save_draws::Bool = false,
+            reps::Int = 2000;
+            block_length::Int = 4,
+            compute_ar::Bool = false,
+            ar_grid::Union{Nothing, Vector{Float64}} = nothing,
+            norm_scale::Float64 = -1.0,
+            save_draws::Bool = false
     )
         reps > 0 || throw(ArgumentError("reps must be positive"))
         block_length > 0 || throw(ArgumentError("block_length must be positive"))
@@ -585,7 +586,7 @@ Concrete subtypes:
 - `IRFResult{T}`: Point-identified IRF results (Cholesky, IV, etc.)
 - `SignRestrictedIRFResult{T}`: Set-identified IRF results (sign restrictions)
 """
-abstract type AbstractIRFResult{T<:AbstractFloat} end
+abstract type AbstractIRFResult{T <: AbstractFloat} end
 
 """
     IRFResult{T, A<:AxisArray}
@@ -613,32 +614,32 @@ irf.irf[:GDP, :MonetaryShock, 0:12]  # GDP response to monetary shock, horizons 
 - `inference::Union{Nothing, InferenceType}`: Inference method used
 - `metadata::NamedTuple`: Additional information
 """
-struct IRFResult{T<:AbstractFloat,A<:AxisArray} <: AbstractIRFResult{T}
+struct IRFResult{T <: AbstractFloat, A <: AxisArray} <: AbstractIRFResult{T}
     irf::A
     stderr::A
-    bootstrap_draws::Union{Nothing,AxisArray}
+    bootstrap_draws::Union{Nothing, AxisArray}
     lower::Vector{A}
     upper::Vector{A}
     coverage::Vector{Float64}
     identification::AbstractIdentification
-    inference::Union{Nothing,InferenceType}
+    inference::Union{Nothing, InferenceType}
     metadata::NamedTuple
 end
 
 # Convenience constructor: infer T from AxisArray element type
 function IRFResult(
-    irf::A,
-    stderr,
-    bootstrap_draws,
-    lower,
-    upper,
-    coverage,
-    identification,
-    inference,
-    metadata,
-) where {A<:AxisArray}
+        irf::A,
+        stderr,
+        bootstrap_draws,
+        lower,
+        upper,
+        coverage,
+        identification,
+        inference,
+        metadata
+) where {A <: AxisArray}
     T = eltype(irf)
-    IRFResult{T,A}(
+    IRFResult{T, A}(
         irf,
         stderr,
         bootstrap_draws,
@@ -647,7 +648,7 @@ function IRFResult(
         coverage,
         identification,
         inference,
-        metadata,
+        metadata
     )
 end
 
@@ -676,7 +677,7 @@ irf.irf_median[:GDP, :MonetaryShock, 0:12]  # Median GDP response, horizons 0-12
 - `identification::SignRestriction`: Identification scheme used
 - `metadata::NamedTuple`: Additional information (n_draws, etc.)
 """
-struct SignRestrictedIRFResult{T<:AbstractFloat,A<:AxisArray} <: AbstractIRFResult{T}
+struct SignRestrictedIRFResult{T <: AbstractFloat, A <: AxisArray} <: AbstractIRFResult{T}
     irf_median::A
     irf_draws::AxisArray
     lower::Vector{A}
@@ -689,16 +690,16 @@ end
 
 # Convenience constructor: infer T from AxisArray element type
 function SignRestrictedIRFResult(
-    irf_median::A,
-    irf_draws,
-    lower,
-    upper,
-    coverage,
-    rotation_matrices::Vector{Matrix{T}},
-    identification,
-    metadata,
-) where {T,A<:AxisArray}
-    SignRestrictedIRFResult{T,A}(
+        irf_median::A,
+        irf_draws,
+        lower,
+        upper,
+        coverage,
+        rotation_matrices::Vector{Matrix{T}},
+        identification,
+        metadata
+) where {T, A <: AxisArray}
+    SignRestrictedIRFResult{T, A}(
         irf_median,
         irf_draws,
         lower,
@@ -706,7 +707,7 @@ function SignRestrictedIRFResult(
         coverage,
         rotation_matrices,
         identification,
-        metadata,
+        metadata
     )
 end
 
@@ -740,7 +741,7 @@ irf.data[:, :GDP, :MonetaryPolicy, 0:12]  # GDP response to monetary shock, hori
 - `identification::I`: Identification scheme used (any identification type)
 - `metadata::NamedTuple`: Additional information (max_horizon, n_draws, etc.)
 """
-struct BayesianIRFResult{T<:AbstractFloat,A<:AxisArray,I} <: AbstractIRFResult{T}
+struct BayesianIRFResult{T <: AbstractFloat, A <: AxisArray, I} <: AbstractIRFResult{T}
     data::A                         # 4D AxisArray (draw × variable × shock × horizon)
     lower::Vector{AxisArray}        # Credible bands (one per coverage level)
     upper::Vector{AxisArray}
@@ -772,7 +773,7 @@ irf.data[:y, :x, 0:6]  # Response of y to shock x, horizons 0-6
 - `coverage::Vector{Float64}`: Coverage levels (e.g., [0.68, 0.90, 0.95])
 - `metadata::NamedTuple`: Additional information (horizon, formula, term, etc.)
 """
-struct LocalProjectionIRFResult{T<:AbstractFloat,A<:AxisArray} <: AbstractIRFResult{T}
+struct LocalProjectionIRFResult{T <: AbstractFloat, A <: AxisArray} <: AbstractIRFResult{T}
     data::A                         # 3D AxisArray (response × shock × horizon)
     stderr::AxisArray               # Standard errors (same shape)
     lower::Vector{AxisArray}        # Confidence bands
@@ -868,9 +869,9 @@ end
 
 # Constructor from explicit arguments
 function NarrativeRestriction(
-    sign_restrictions::Matrix{Int},
-    narrative_shocks::Vector{NarrativeShockRestriction{D}};
-    horizon::Int = 0,
+        sign_restrictions::Matrix{Int},
+        narrative_shocks::Vector{NarrativeShockRestriction{D}};
+        horizon::Int = 0
 ) where {D}
     NarrativeRestriction{D}(sign_restrictions, narrative_shocks, horizon)
 end
@@ -879,12 +880,12 @@ end
 using Tables
 
 function NarrativeRestriction(
-    sign_restrictions::Matrix{Int},
-    table;
-    horizon::Int = 0,
-    shock_col::Symbol = :shock,
-    date_col::Symbol = :date,
-    sign_col::Symbol = :sign,
+        sign_restrictions::Matrix{Int},
+        table;
+        horizon::Int = 0,
+        shock_col::Symbol = :shock,
+        date_col::Symbol = :date,
+        sign_col::Symbol = :sign
 )
     Tables.istable(table) ||
         throw(ArgumentError("table must implement Tables.jl interface"))
@@ -917,9 +918,9 @@ end
 
 # Convenience: construct from just narrative_shocks and n_vars (no sign restrictions)
 function NarrativeRestriction(
-    narrative_shocks::Vector{NarrativeShockRestriction{D}},
-    n_vars::Int;
-    horizon::Int = 0,
+        narrative_shocks::Vector{NarrativeShockRestriction{D}},
+        n_vars::Int;
+        horizon::Int = 0
 ) where {D}
     sign_restrictions = zeros(Int, n_vars, n_vars)  # No sign restrictions
     return NarrativeRestriction{D}(sign_restrictions, narrative_shocks, horizon)
@@ -1145,7 +1146,7 @@ Describes the scaling state of an IRF result.
   For sign-restricted IRFs, this is the median across accepted draws.
 - `names::Vector{Symbol}`: variable/shock names (same ordering as `impact_diagonal`)
 """
-struct IRFScale{T<:Real,N<:AbstractNormalization}
+struct IRFScale{T <: Real, N <: AbstractNormalization}
     normalization::N
     scale::Vector{T}
     impact_diagonal::Vector{T}
@@ -1167,7 +1168,7 @@ function Base.show(io::IO, s::IRFScale)
             "  scale = ",
             round(sc; digits = 6),
             "  effective = ",
-            round(eff; digits = 6),
+            round(eff; digits = 6)
         )
     end
 end
@@ -1188,12 +1189,11 @@ s.impact_diagonal  # diag(P) — what "1 unit of shock j" means
 s.names            # variable/shock names
 ```
 """
-function get_scale(irf::Union{IRFResult,SignRestrictedIRFResult})
+function get_scale(irf::Union{IRFResult, SignRestrictedIRFResult})
     md = irf.metadata
     norm = md.normalization()   # reconstruct instance from stored type
     T = eltype(md.impact_diagonal)
-    sc =
-        md.scale isa AbstractVector ? T.(md.scale) :
-        fill(T(md.scale), length(md.impact_diagonal))
-    IRFScale{T,typeof(norm)}(norm, sc, md.impact_diagonal, Symbol.(md.names))
+    sc = md.scale isa AbstractVector ? T.(md.scale) :
+         fill(T(md.scale), length(md.impact_diagonal))
+    IRFScale{T, typeof(norm)}(norm, sc, md.impact_diagonal, Symbol.(md.names))
 end

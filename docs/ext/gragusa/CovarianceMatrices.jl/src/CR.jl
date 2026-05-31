@@ -52,11 +52,11 @@ In-place version that aggregates and adds sign * (X2'X2) to S.
 Used for multi-way clustering with inclusion-exclusion.
 """
 function clusterize_add!(
-    X2::Matrix{T},
-    S::Matrix{T},
-    X::Matrix{T},
-    g::Clustering,
-    sign::Int,
+        X2::Matrix{T},
+        S::Matrix{T},
+        X::Matrix{T},
+        g::Clustering,
+        sign::Int
 ) where {T}
     fill!(X2, zero(T))
 
@@ -87,11 +87,11 @@ This is ~10x faster than scatter-add for large matrices because it converts
 random writes to sequential reads.
 """
 function clusterize_gather_add!(
-    X2::Matrix{T},
-    S::Matrix{T},
-    X::Matrix{T},
-    indices::Vector{Vector{Int}},
-    sign::Int,
+        X2::Matrix{T},
+        S::Matrix{T},
+        X::Matrix{T},
+        indices::Vector{Vector{Int}},
+        sign::Int
 ) where {T}
     ngroups = length(indices)
     ncols = size(X, 2)
@@ -132,22 +132,22 @@ end
 
 # Helper to get lengths from tuple of Clustering in type-stable way
 @inline _get_lengths(f::Tuple{Clustering}) = (length(f[1]),)
-@inline _get_lengths(f::Tuple{Clustering,Clustering}) = (length(f[1]), length(f[2]))
-@inline _get_lengths(f::Tuple{Clustering,Clustering,Clustering}) =
-    (length(f[1]), length(f[2]), length(f[3]))
-@inline _get_lengths(f::NTuple{N,Clustering}) where {N} = ntuple(i -> length(f[i]), Val(N))
+@inline _get_lengths(f::Tuple{Clustering, Clustering}) = (length(f[1]), length(f[2]))
+@inline _get_lengths(f::Tuple{
+    Clustering, Clustering, Clustering}) = (length(f[1]), length(f[2]), length(f[3]))
+@inline _get_lengths(f::NTuple{N, Clustering}) where {N} = ntuple(i -> length(f[i]), Val(N))
 
 # Single-cluster fast path (most common case) - fully type-stable
-function avar(k::CR, X::Union{Matrix{F},Vector{F}}; kwargs...) where {F<:Real}
+function avar(k::CR, X::Union{Matrix{F}, Vector{F}}; kwargs...) where {F <: Real}
     f = k.g
     return _avar_impl(f, X)
 end
 
 # Dispatch on tuple length for type stability
 @inline function _avar_impl(
-    f::Tuple{Clustering},
-    X::Union{Matrix{F},Vector{F}},
-) where {F<:Real}
+        f::Tuple{Clustering},
+        X::Union{Matrix{F}, Vector{F}}
+) where {F <: Real}
     n = length(f[1])
     @assert n > 1 "All groups must have at least 2 observations"
     @assert size(X, 1) == n "X must have the same number of observations as the groups"
@@ -156,9 +156,9 @@ end
 
 # Two-way clustering - type-stable
 @inline function _avar_impl(
-    f::Tuple{Clustering,Clustering},
-    X::Union{Matrix{F},Vector{F}},
-) where {F<:Real}
+        f::Tuple{Clustering, Clustering},
+        X::Union{Matrix{F}, Vector{F}}
+) where {F <: Real}
     n1, n2 = length(f[1]), length(f[2])
     @assert n1 == n2 "All groups must have the same size"
     @assert n1 > 1 "All groups must have at least 2 observations"
@@ -175,9 +175,9 @@ end
 
 # General N-way clustering fallback
 function _avar_impl(
-    f::NTuple{N,Clustering},
-    X::Union{Matrix{F},Vector{F}},
-) where {N,F<:Real}
+        f::NTuple{N, Clustering},
+        X::Union{Matrix{F}, Vector{F}}
+) where {N, F <: Real}
     lens = _get_lengths(f)
     gmin, gmax = minimum(lens), maximum(lens)
     @assert gmin == gmax "All groups must have the same size"
@@ -200,7 +200,7 @@ function _avar_impl(
 end
 
 # Type-stable clustering merge helper
-@inline function _merge_clusterings(f::NTuple{N,Clustering}, indices::Vector{Int}) where {N}
+@inline function _merge_clusterings(f::NTuple{N, Clustering}, indices::Vector{Int}) where {N}
     if length(indices) == 2
         return Clustering(f[indices[1]], f[indices[2]])
     elseif length(indices) == 3
@@ -212,7 +212,7 @@ end
 end
 
 # CachedCR fast path: uses preallocated buffers and precomputed cluster indices
-function avar(k::CachedCR, X::Union{Matrix{F},Vector{F}}; kwargs...) where {F<:Real}
+function avar(k::CachedCR, X::Union{Matrix{F}, Vector{F}}; kwargs...) where {F <: Real}
     cache = k.cache
     ncols = size(X, 2)
 
@@ -232,7 +232,7 @@ function avar(k::CachedCR, X::Union{Matrix{F},Vector{F}}; kwargs...) where {F<:R
             S,
             Xp,
             cache.cluster_indices[i],
-            cache.signs[i],
+            cache.signs[i]
         )
     end
 
@@ -250,13 +250,13 @@ function _avar_tuple_impl(f::Tuple{Clustering}, X)
 end
 
 # Type-stable implementation for two-way clustering
-function _avar_tuple_impl(f::Tuple{Clustering,Clustering}, X)
+function _avar_tuple_impl(f::Tuple{Clustering, Clustering}, X)
     g12 = Clustering(f[1], f[2])
     return (clusterize(X[1], f[1]), clusterize(X[2], f[2]), clusterize(X[3], g12))
 end
 
 # Fallback for N-way
-function _avar_tuple_impl(f::NTuple{N,Clustering}, X) where {N}
+function _avar_tuple_impl(f::NTuple{N, Clustering}, X) where {N}
     combs = Iterators.filter(!isempty, combinations(1:N))
     map(zip(X, combs)) do (Z, c)
         if length(c) == 1
@@ -271,10 +271,10 @@ end
 # Type-stable nclusters
 nclusters(k::CR) = _nclusters(k.g)
 @inline _nclusters(f::Tuple{Clustering}) = (f[1].ngroups,)
-@inline _nclusters(f::Tuple{Clustering,Clustering}) = (f[1].ngroups, f[2].ngroups)
-@inline _nclusters(f::Tuple{Clustering,Clustering,Clustering}) =
-    (f[1].ngroups, f[2].ngroups, f[3].ngroups)
-@inline _nclusters(f::NTuple{N,Clustering}) where {N} = ntuple(i -> f[i].ngroups, Val(N))
+@inline _nclusters(f::Tuple{Clustering, Clustering}) = (f[1].ngroups, f[2].ngroups)
+@inline _nclusters(f::Tuple{
+    Clustering, Clustering, Clustering}) = (f[1].ngroups, f[2].ngroups, f[3].ngroups)
+@inline _nclusters(f::NTuple{N, Clustering}) where {N} = ntuple(i -> f[i].ngroups, Val(N))
 
 # Type-stable total_num_clusters
 function total_num_clusters(k::CR)
@@ -286,25 +286,25 @@ end
     return (f[1].ngroups,)
 end
 
-@inline function _total_num_clusters(f::Tuple{Clustering,Clustering})
+@inline function _total_num_clusters(f::Tuple{Clustering, Clustering})
     g12 = Clustering(f[1], f[2])
     return (f[1].ngroups, f[2].ngroups, g12.ngroups)
 end
 
-function _total_num_clusters(f::NTuple{N,Clustering}) where {N}
+function _total_num_clusters(f::NTuple{N, Clustering}) where {N}
     combs = Iterators.filter(!isempty, combinations(1:N))
     map(c -> begin
-        if length(c) == 1
-            f[c[1]].ngroups
-        else
-            _merge_clusterings(f, c).ngroups
-        end
-    end, combs)
+            if length(c) == 1
+                f[c[1]].ngroups
+            else
+                _merge_clusterings(f, c).ngroups
+            end
+        end, combs)
 end
 
-rescale!(k::T, S::Matrix) where {T<:CR0} = nothing
+rescale!(k::T, S::Matrix) where {T <: CR0} = nothing
 
-function rescale!(k::T, S::AbstractMatrix) where {T<:CR1}
+function rescale!(k::T, S::AbstractMatrix) where {T <: CR1}
     # scale total vcov estimate by ((N-1)/(N-K)) * (G/(G-1))
     nc = nclusters(k)
     G = minimum(nc)
@@ -313,5 +313,5 @@ function rescale!(k::T, S::AbstractMatrix) where {T<:CR1}
     @. S *= ((N - 1) / (N - K)) * (G / (G - 1))
 end
 
-rescale!(k::T, S::AbstractMatrix) where {T<:CR2} = nothing
-rescale!(k::T, S::AbstractMatrix) where {T<:CR3} = nothing
+rescale!(k::T, S::AbstractMatrix) where {T <: CR2} = nothing
+rescale!(k::T, S::AbstractMatrix) where {T <: CR3} = nothing

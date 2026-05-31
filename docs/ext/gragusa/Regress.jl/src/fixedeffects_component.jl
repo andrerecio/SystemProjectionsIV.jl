@@ -4,7 +4,7 @@ Fixed effects component for OLS estimation.
 This type stores fixed effect estimates, cluster variables, and metadata
 specific to econometric models with high-dimensional fixed effects.
 """
-struct OLSFixedEffects{T<:AbstractFloat}
+struct OLSFixedEffects{T <: AbstractFloat}
     # Fixed effect solutions
     fe::DataFrame                   # Solved fixed effects (can be empty)
     fe_names::Vector{Symbol}        # Names of FE variables
@@ -44,7 +44,7 @@ has_clusters(fes::OLSFixedEffects) = length(fes.clusters) > 0
 
 Construct an empty fixed effects component for models without FEs.
 """
-function build_empty_fes(::Type{T}) where {T<:AbstractFloat}
+function build_empty_fes(::Type{T}) where {T <: AbstractFloat}
     return OLSFixedEffects{T}(
         DataFrame(),
         Symbol[],
@@ -54,6 +54,6 @@ function build_empty_fes(::Type{T}) where {T<:AbstractFloat}
         Int[],
         0,
         true,
-        :none,
+        :none
     )
 end

@@ -95,10 +95,10 @@ Apply constraints to coefficient matrix `A` in-place.
 - Modified `A` matrix with constraints applied
 """
 function apply_constraints!(
-    A::Matrix{T},
-    constraints::Vector{<:AbstractConstraint},
-    varnames::Vector{Symbol},
-    n_lags::Int,
+        A::Matrix{T},
+        constraints::Vector{<:AbstractConstraint},
+        varnames::Vector{Symbol},
+        n_lags::Int
 ) where {T}
     n_vars = length(varnames)
 
@@ -116,11 +116,11 @@ function apply_constraints!(
 end
 
 function apply_zero_constraint!(
-    A::Matrix,
-    c::ZeroConstraint,
-    varnames::Vector{Symbol},
-    n_lags::Int,
-    n_vars::Int,
+        A::Matrix,
+        c::ZeroConstraint,
+        varnames::Vector{Symbol},
+        n_lags::Int,
+        n_vars::Int
 )
     # Find equation (row) index
     row_idx = findfirst(==(c.variable), varnames)
@@ -144,10 +144,10 @@ function apply_zero_constraint!(
 end
 
 function apply_fixed_constraint!(
-    A::Matrix,
-    c::FixedConstraint,
-    varnames::Vector{Symbol},
-    n_vars::Int,
+        A::Matrix,
+        c::FixedConstraint,
+        varnames::Vector{Symbol},
+        n_vars::Int
 )
     row_idx = findfirst(==(c.variable), varnames)
     row_idx === nothing && throw(ArgumentError("Variable $(c.variable) not found"))
@@ -160,11 +160,11 @@ function apply_fixed_constraint!(
 end
 
 function apply_block_exogeneity!(
-    A::Matrix,
-    c::BlockExogeneity,
-    varnames::Vector{Symbol},
-    n_lags::Int,
-    n_vars::Int,
+        A::Matrix,
+        c::BlockExogeneity,
+        varnames::Vector{Symbol},
+        n_lags::Int,
+        n_vars::Int
 )
     # Create equivalent zero constraints
     for to_var in c.to
@@ -174,7 +174,7 @@ function apply_block_exogeneity!(
                 ZeroConstraint(to_var, c.from, [lag]),
                 varnames,
                 n_lags,
-                n_vars,
+                n_vars
             )
         end
     end
@@ -192,9 +192,9 @@ For restricted estimation:  = S *  where  are the free parameters.
 - `n_free::Int`: Number of free parameters
 """
 function build_selection_matrix(
-    constraints::Vector{<:AbstractConstraint},
-    varnames::Vector{Symbol},
-    n_lags::Int,
+        constraints::Vector{<:AbstractConstraint},
+        varnames::Vector{Symbol},
+        n_lags::Int
 )
     n_vars = length(varnames)
     n_coef = n_vars * (1 + n_vars * n_lags)
@@ -214,7 +214,7 @@ function build_selection_matrix(
                         ZeroConstraint(to_var, c.from, [lag]),
                         varnames,
                         n_lags,
-                        n_vars,
+                        n_vars
                     )
                 end
             end
@@ -235,11 +235,11 @@ function build_selection_matrix(
 end
 
 function mark_zero_constraint!(
-    is_free::BitVector,
-    c::ZeroConstraint,
-    varnames::Vector{Symbol},
-    n_lags::Int,
-    n_vars::Int,
+        is_free::BitVector,
+        c::ZeroConstraint,
+        varnames::Vector{Symbol},
+        n_lags::Int,
+        n_vars::Int
 )
     row_idx = findfirst(==(c.variable), varnames)
     row_idx === nothing && return
@@ -271,9 +271,9 @@ Validate that constraints are well-specified.
 - `ArgumentError` if constraints reference non-existent variables or invalid lags
 """
 function check_constraints(
-    constraints::Vector{<:AbstractConstraint},
-    varnames::Vector{Symbol},
-    n_lags::Int,
+        constraints::Vector{<:AbstractConstraint},
+        varnames::Vector{Symbol},
+        n_lags::Int
 )
     for c in constraints
         if c isa ZeroConstraint

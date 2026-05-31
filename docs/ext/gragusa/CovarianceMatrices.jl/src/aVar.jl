@@ -21,14 +21,14 @@ function aVar(k::AbstractAsymptoticVarianceEstimator, m::AbstractMatrix; kwargs.
 end
 
 function aVar(
-    k::AbstractAsymptoticVarianceEstimator,
-    m::AbstractMatrix{T};
-    demean::Bool = true,
-    dims::Int = 1,
-    means::Union{Nothing,AbstractArray} = nothing,
-    prewhite::Bool = false,
-    scale = true,
-) where {T<:Real}
+        k::AbstractAsymptoticVarianceEstimator,
+        m::AbstractMatrix{T};
+        demean::Bool = true,
+        dims::Int = 1,
+        means::Union{Nothing, AbstractArray} = nothing,
+        prewhite::Bool = false,
+        scale = true
+) where {T <: Real}
     Base.require_one_based_indexing(m)
     X = demean ? demeaner(m; means = means, dims = dims) : m
     Shat = avar(k, X; prewhite = isa(k, HAC) ? prewhite : false)
@@ -47,14 +47,14 @@ function scalevar!(Shat, scale::Int, n)
 end
 
 function aVar(
-    k::VARHAC,
-    m::AbstractMatrix{T};
-    demean::Bool = true,
-    dims::Int = 1,
-    means::Union{Nothing,AbstractArray} = nothing,
-    scale = true,
-    kwargs...,
-) where {T<:Real}
+        k::VARHAC,
+        m::AbstractMatrix{T};
+        demean::Bool = true,
+        dims::Int = 1,
+        means::Union{Nothing, AbstractArray} = nothing,
+        scale = true,
+        kwargs...
+) where {T <: Real}
     Base.require_one_based_indexing(m)
     X = demean ? demeaner(m; means = means, dims = dims) : m
     Shat = avar(k, X)

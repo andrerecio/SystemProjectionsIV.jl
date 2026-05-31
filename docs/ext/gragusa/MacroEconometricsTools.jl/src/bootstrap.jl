@@ -99,7 +99,7 @@ function _BootstrapWorkspace{T}(n_obs::Int, n_vars_val::Int, n_lags_val::Int) wh
         Matrix{T}(undef, n_vars_val, n_vars_val),  # Lchol
         zeros(T, Kp, Kp),                 # F (must start zero; only top blocks rewritten)
         Matrix{T}(undef, Kp, Kp),         # F_power
-        Matrix{T}(undef, Kp, Kp),         # F_power_buf
+        Matrix{T}(undef, Kp, Kp)         # F_power_buf
     )
 end
 
@@ -108,11 +108,11 @@ end
 # dropping the first p rows. Matching the column order of `create_lags` is
 # important because our reshape of A back into lag matrices relies on it.
 @inline function _fill_X_from_Y!(
-    X::AbstractMatrix{T},
-    Y::AbstractMatrix{T},
-    n_obs::Int,
-    n_vars_val::Int,
-    n_lags_val::Int,
+        X::AbstractMatrix{T},
+        Y::AbstractMatrix{T},
+        n_obs::Int,
+        n_vars_val::Int,
+        n_lags_val::Int
 ) where {T}
     n_eff = n_obs - n_lags_val
     @inbounds for t in 1:n_eff
@@ -142,10 +142,10 @@ should mark the rep as NaN). On success, `ws.A`, `ws.U`, `ws.Σ`, `ws.Lchol`,
 and `ws.F` are all written.
 """
 function _fast_refit_ols!(
-    ws::_BootstrapWorkspace{T},
-    Y_boot::AbstractMatrix{T},
-    n_vars_val::Int,
-    n_lags_val::Int,
+        ws::_BootstrapWorkspace{T},
+        Y_boot::AbstractMatrix{T},
+        n_vars_val::Int,
+        n_lags_val::Int
 ) where {T}
     n_obs = size(Y_boot, 1)
     n_eff = n_obs - n_lags_val
@@ -248,10 +248,10 @@ subsequent horizons advance `F_power ← F_power · F` and multiply the top
 K × K block by P.
 """
 function _fast_cholesky_irf!(
-    irf_out::AbstractArray{T,3},
-    ws::_BootstrapWorkspace{T},
-    horizon::Int;
-    normalization::AbstractNormalization = UnitStd(),
+        irf_out::AbstractArray{T, 3},
+        ws::_BootstrapWorkspace{T},
+        horizon::Int;
+        normalization::AbstractNormalization = UnitStd()
 ) where {T}
     K = size(ws.Σ, 1)
     # Apply normalization to produce the identification matrix P.
@@ -347,12 +347,12 @@ The wild bootstrap is robust to conditional heteroskedasticity and preserves
 the cross-equation correlation structure in the residuals.
 """
 function bootstrap_irf_wild(
-    model::VARModel{T},
-    identification::AbstractIdentification,
-    horizon::Int,
-    reps::Int,
-    rng::AbstractRNG;
-    normalization::AbstractNormalization = UnitStd(),
+        model::VARModel{T},
+        identification::AbstractIdentification,
+        horizon::Int,
+        reps::Int,
+        rng::AbstractRNG;
+        normalization::AbstractNormalization = UnitStd()
 ) where {T}
     m = n_vars(model)
     n_lags_val = n_lags(model)
@@ -404,7 +404,7 @@ function bootstrap_irf_wild(
                         view(irf_boot,r,:,:,:),
                         ws,
                         horizon;
-                        normalization = normalization,
+                        normalization = normalization
                     )
                 catch
                     n_failed += 1
@@ -463,12 +463,12 @@ For time series with temporal dependence or heteroskedasticity, wild bootstrap o
 block bootstrap may be more appropriate. The standard bootstrap assumes i.i.d. errors.
 """
 function bootstrap_irf_standard(
-    model::VARModel{T},
-    identification::AbstractIdentification,
-    horizon::Int,
-    reps::Int,
-    rng::AbstractRNG;
-    normalization::AbstractNormalization = UnitStd(),
+        model::VARModel{T},
+        identification::AbstractIdentification,
+        horizon::Int,
+        reps::Int,
+        rng::AbstractRNG;
+        normalization::AbstractNormalization = UnitStd()
 ) where {T}
     m = n_vars(model)
     n_lags_val = n_lags(model)
@@ -510,7 +510,7 @@ function bootstrap_irf_standard(
                         view(irf_boot,r,:,:,:),
                         ws,
                         horizon;
-                        normalization = normalization,
+                        normalization = normalization
                     )
                 catch
                     n_failed += 1
@@ -527,7 +527,7 @@ function bootstrap_irf_standard(
                 normalize!(P_boot, normalization)
                 copyto!(
                     view(irf_boot,r,:,:,:),
-                    compute_irf_point(var_boot, P_boot, horizon),
+                    compute_irf_point(var_boot, P_boot, horizon)
                 )
             catch
                 n_failed += 1
@@ -596,13 +596,13 @@ irf_boot = bootstrap_irf_block(model, id, 24, 1000, 20, rng)
 ```
 """
 function bootstrap_irf_block(
-    model::VARModel{T},
-    identification::AbstractIdentification,
-    horizon::Int,
-    reps::Int,
-    block_length::Int,
-    rng::AbstractRNG;
-    normalization::AbstractNormalization = UnitStd(),
+        model::VARModel{T},
+        identification::AbstractIdentification,
+        horizon::Int,
+        reps::Int,
+        block_length::Int,
+        rng::AbstractRNG;
+        normalization::AbstractNormalization = UnitStd()
 ) where {T}
     m = n_vars(model)
     n_lags_val = n_lags(model)
@@ -678,7 +678,7 @@ function bootstrap_irf_block(
                         view(irf_boot,r,:,:,:),
                         ws,
                         horizon;
-                        normalization = normalization,
+                        normalization = normalization
                     )
                 catch
                     n_failed += 1
@@ -695,7 +695,7 @@ function bootstrap_irf_block(
                 normalize!(P_boot, normalization)
                 copyto!(
                     view(irf_boot,r,:,:,:),
-                    compute_irf_point(var_boot, P_boot, horizon),
+                    compute_irf_point(var_boot, P_boot, horizon)
                 )
             catch
                 n_failed += 1
@@ -722,15 +722,15 @@ The `parallel` keyword is deprecated; use Julia's built-in threading
 or Distributed.pmap externally if parallel bootstrap is needed.
 """
 function bootstrap_irf(
-    model::VARModel{T},
-    identification::AbstractIdentification,
-    horizon::Int,
-    reps::Int;
-    method::Symbol = :wild,
-    block_length::Int = 10,
-    normalization::AbstractNormalization = UnitStd(),
-    parallel::Symbol = :none,
-    rng::AbstractRNG = Random.default_rng(),
+        model::VARModel{T},
+        identification::AbstractIdentification,
+        horizon::Int,
+        reps::Int;
+        method::Symbol = :wild,
+        block_length::Int = 10,
+        normalization::AbstractNormalization = UnitStd(),
+        parallel::Symbol = :none,
+        rng::AbstractRNG = Random.default_rng()
 ) where {T}
     method ∈ [:wild, :standard, :block] ||
         throw(ArgumentError("method must be :wild, :standard, or :block"))
@@ -749,7 +749,7 @@ function bootstrap_irf(
             horizon,
             reps,
             rng;
-            normalization,
+            normalization
         )
     else  # :block
         return bootstrap_irf_block(
@@ -759,7 +759,7 @@ function bootstrap_irf(
             reps,
             block_length,
             rng;
-            normalization,
+            normalization
         )
     end
 end

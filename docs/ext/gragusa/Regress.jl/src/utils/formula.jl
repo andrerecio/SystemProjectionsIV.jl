@@ -5,7 +5,7 @@
 ##############################################################################
 
 eachterm(@nospecialize(x::AbstractTerm)) = (x,)
-eachterm(@nospecialize(x::NTuple{N,AbstractTerm})) where {N} = x
+eachterm(@nospecialize(x::NTuple{N, AbstractTerm})) where {N} = x
 
 ##############################################################################
 ##
@@ -163,7 +163,7 @@ function _parse_fixedeffect_impl(data, rhs_terms::Vector{AbstractTerm})
 end
 
 # Method for external packages
-function parse_fixedeffect(data, @nospecialize(ts::NTuple{N,AbstractTerm})) where {N}
+function parse_fixedeffect(data, @nospecialize(ts::NTuple{N, AbstractTerm})) where {N}
     # Convert to concrete vector immediately
     terms_vec = collect(AbstractTerm, eachterm(ts))
     return _parse_fixedeffect_tuple_impl(data, terms_vec)
@@ -186,7 +186,7 @@ function _parse_fixedeffect_tuple_impl(data, terms_vec::Vector{AbstractTerm})
         if any(fe.interaction isa UnitWeights for fe in fes)
             filtered = AbstractTerm[InterceptTerm{false}()]
             for term in terms_vec
-                if !isa(term, Union{ConstantTerm,InterceptTerm}) && !has_fe(term)
+                if !isa(term, Union{ConstantTerm, InterceptTerm}) && !has_fe(term)
                     push!(filtered, term)
                 end
             end
@@ -332,9 +332,9 @@ programmatically:
         ols(df, f)
     end
 """
-lags(t::T, n::Int) where {T<:AbstractTerm} = LagTerm{T}(t, n)
+lags(t::T, n::Int) where {T <: AbstractTerm} = LagTerm{T}(t, n)
 
-struct LagTerm{T<:AbstractTerm} <: AbstractTerm
+struct LagTerm{T <: AbstractTerm} <: AbstractTerm
     term::T
     nsteps::Int
 end
@@ -355,11 +355,11 @@ function _parse_lags_args(t::FunctionTerm)
         else
             throw(
                 ArgumentError(
-                    "lags() inside @formula requires an integer literal as the " *
-                    "second argument; got `$(t.exorig)`. To use a dynamic lag " *
-                    "count, build the formula programmatically, e.g. " *
-                    "`term(:y) ~ term(1) + lags(term(:x), j)`.",
-                ),
+                "lags() inside @formula requires an integer literal as the " *
+                "second argument; got `$(t.exorig)`. To use a dynamic lag " *
+                "count, build the formula programmatically, e.g. " *
+                "`term(:y) ~ term(1) + lags(term(:x), j)`.",
+            ),
             )
         end
     else
@@ -373,9 +373,9 @@ function _termvars_lags(t::FunctionTerm)
 end
 
 function StatsModels.apply_schema(
-    t::FunctionTerm{typeof(lags)},
-    sch::StatsModels.Schema,
-    ctx::Type,
+        t::FunctionTerm{typeof(lags)},
+        sch::StatsModels.Schema,
+        ctx::Type
 )
     term, nsteps = _parse_lags_args(t)
     term = apply_schema(term, sch, ctx)
@@ -391,9 +391,9 @@ function StatsModels.modelcols(ll::LagTerm, d::Tables.ColumnTable)
     original_cols = StatsModels.modelcols(ll.term, d)
     original_cols isa AbstractVector || throw(
         ArgumentError(
-            "lags() requires a single-column term; got a multi-column term " *
-            "(e.g., interaction or categorical). Apply lags to each variable separately.",
-        ),
+        "lags() requires a single-column term; got a multi-column term " *
+        "(e.g., interaction or categorical). Apply lags to each variable separately.",
+    ),
     )
     n = length(original_cols)
     nsteps = ll.nsteps

@@ -18,7 +18,7 @@ Result of the IID (SSR-based) first-stage F-test for each endogenous variable.
 - `df2::Int`: Denominator degrees of freedom (first-stage residual df)
 - `endogenous_names::Vector{String}`: Names of endogenous variables
 """
-struct FirstStageFResult{T<:AbstractFloat}
+struct FirstStageFResult{T <: AbstractFloat}
     F_per_endo::Vector{T}
     p_per_endo::Vector{T}
     df1::Int
@@ -30,15 +30,13 @@ function Base.show(io::IO, r::FirstStageFResult{T}) where {T}
     println(io, "First-Stage F-test (IID)")
     println(io, "─" ^ 50)
     for (j, name) in enumerate(r.endogenous_names)
-        @printf(
-            io,
+        @printf(io,
             "  %-15s  F = %8.3f  (p = %.4e)  df = (%d, %d)\n",
             name,
             r.F_per_endo[j],
             r.p_per_endo[j],
             r.df1,
-            r.df2
-        )
+            r.df2)
     end
 end
 
@@ -82,7 +80,7 @@ Tests H₀: instrumented variables are exogenous.
 - `df1::Int`: Numerator df (number of endogenous variables)
 - `df2::Int`: Denominator df
 """
-struct WuHausmanResult{T<:AbstractFloat}
+struct WuHausmanResult{T <: AbstractFloat}
     stat::T
     p::T
     df1::Int
@@ -90,14 +88,12 @@ struct WuHausmanResult{T<:AbstractFloat}
 end
 
 function Base.show(io::IO, r::WuHausmanResult)
-    @printf(
-        io,
+    @printf(io,
         "Wu-Hausman: stat = %8.5f, p = %.4e, on %d and %d DoF.\n",
         r.stat,
         r.p,
         r.df1,
-        r.df2
-    )
+        r.df2)
 end
 
 """
@@ -113,7 +109,7 @@ Only available for overidentified models.
 - `p::T`: p-value
 - `df::Int`: Degrees of freedom (n_instruments - n_endogenous)
 """
-struct SarganResult{T<:AbstractFloat}
+struct SarganResult{T <: AbstractFloat}
     stat::T
     p::T
     df::Int

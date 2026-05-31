@@ -31,16 +31,16 @@ plot(layer(result[1], x="SepalWidth", y="SepalLength", Stat.binmean(n=10), Geom.
 ```
 """
 function partial_out(
-    @nospecialize(df),
-    @nospecialize(f::FormulaTerm);
-    @nospecialize(weights::Union{Symbol,Expr,Nothing} = nothing),
-    add_mean::Bool = false,
-    maxiter::Integer = 10000,
-    @nospecialize(contrasts::Dict = Dict{Symbol,Any}()),
-    method::Symbol = :cpu,
-    double_precision::Bool = true,
-    @nospecialize(tol::Real = double_precision ? 1e-8 : 1e-6),
-    align::Bool = true,
+        @nospecialize(df),
+        @nospecialize(f::FormulaTerm);
+        @nospecialize(weights::Union{Symbol, Expr, Nothing} = nothing),
+        add_mean::Bool = false,
+        maxiter::Integer = 10000,
+        @nospecialize(contrasts::Dict = Dict{Symbol, Any}()),
+        method::Symbol = :cpu,
+        double_precision::Bool = true,
+        @nospecialize(tol::Real = double_precision ? 1e-8 : 1e-6),
+        align::Bool = true
 )
     if (ConstantTerm(0) ∉ eachterm(f.rhs)) & (ConstantTerm(1) ∉ eachterm(f.rhs))
         f = FormulaTerm(f.lhs, tuple(ConstantTerm(1), eachterm(f.rhs)...))
@@ -83,8 +83,8 @@ function partial_out(
                 formula.lhs,
                 tuple(
                     ConstantTerm(0),
-                    (t for t in eachterm(formula.rhs) if t != ConstantTerm(1))...,
-                ),
+                    (t for t in eachterm(formula.rhs) if t != ConstantTerm(1))...
+                )
             )
             has_fes_intercept = true
         end
@@ -92,7 +92,7 @@ function partial_out(
         feM = AbstractFixedEffectSolver{double_precision ? Float64 : Float32}(
             fes,
             weights,
-            Val{method},
+            Val{method}
         )
     end
 
@@ -100,8 +100,7 @@ function partial_out(
     vars = unique(StatsModels.termvars(formula))
     subdf = Tables.columntable(disallowmissing!(df[esample, vars]))
     formula_y = FormulaTerm(ConstantTerm(0), (ConstantTerm(0), eachterm(formula.lhs)...))
-    formula_y_schema =
-        apply_schema(formula_y, schema(formula_y, subdf, contrasts), StatisticalModel)
+    formula_y_schema = apply_schema(formula_y, schema(formula_y, subdf, contrasts), StatisticalModel)
     T = double_precision ? Float64 : Float32
     Y = convert(Matrix{T}, modelmatrix(formula_y_schema, subdf))
 
@@ -113,12 +112,13 @@ function partial_out(
         m = mean(Y, weights, dims = 1)
     end
     if has_fes
-        _, b, c = solve_residuals!(
+        _, b,
+        c = solve_residuals!(
             eachcol(Y),
             feM;
             maxiter = maxiter,
             tol = tol,
-            progress_bar = false,
+            progress_bar = false
         )
         append!(iterations, b)
         append!(convergeds, c)
@@ -126,16 +126,16 @@ function partial_out(
 
     # Compute residualized X
     formula_x = FormulaTerm(ConstantTerm(0), formula.rhs)
-    formula_x_schema =
-        apply_schema(formula_x, schema(formula_x, subdf, contrasts), StatisticalModel)
+    formula_x_schema = apply_schema(formula_x, schema(formula_x, subdf, contrasts), StatisticalModel)
     X = convert(Matrix{T}, modelmatrix(formula_x_schema, subdf))
     if has_fes
-        _, b, c = solve_residuals!(
+        _, b,
+        c = solve_residuals!(
             eachcol(X),
             feM;
             maxiter = maxiter,
             tol = tol,
-            progress_bar = false,
+            progress_bar = false
         )
         append!(iterations, b)
         append!(convergeds, c)
@@ -165,7 +165,7 @@ function partial_out(
     for y in ynames
         j += 1
         if align & (nobs < length(esample))
-            out[!, Symbol(y)] = Vector{Union{Float64,Missing}}(missing, size(df, 1))
+            out[!, Symbol(y)] = Vector{Union{Float64, Missing}}(missing, size(df, 1))
             out[esample, Symbol(y)] = residuals[:, j]
         else
             out[!, Symbol(y)] = residuals[:, j]

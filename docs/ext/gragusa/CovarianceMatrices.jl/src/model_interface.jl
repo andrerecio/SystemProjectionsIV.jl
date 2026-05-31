@@ -70,8 +70,8 @@ vcov_robust = vcov(HC3(), Misspecified(), model)
 struct Misspecified <: VarianceForm end
 
 # Convenience type unions for dispatch
-const MLikeForm = Union{Information,Misspecified}
-const GMMLikeForm = Union{Information,Misspecified}
+const MLikeForm = Union{Information, Misspecified}
+const GMMLikeForm = Union{Information, Misspecified}
 
 """
     momentmatrix(model) -> AbstractMatrix
@@ -267,8 +267,8 @@ function _check_dimensions(form::VarianceForm, model::MLikeModel)
     if m != k
         throw(
             ArgumentError(
-                "MLikeModel requires exactly identified system: m=$m parameters but k=$k moment conditions",
-            ),
+            "MLikeModel requires exactly identified system: m=$m parameters but k=$k moment conditions",
+        ),
         )
     end
 
@@ -285,8 +285,8 @@ function _check_dimensions(form::VarianceForm, model::GMMLikeModel)
     if m < k
         throw(
             ArgumentError(
-                "GMMLikeModel requires at least identified system: m=$m moment conditions but k=$k parameters",
-            ),
+            "GMMLikeModel requires at least identified system: m=$m moment conditions but k=$k parameters",
+        ),
         )
     end
 
@@ -297,8 +297,8 @@ function _check_dimensions(form::VarianceForm, model::GMMLikeModel)
         if hessian_result === nothing
             throw(
                 ArgumentError(
-                    "Misspecified form for GMM models requires hessian_objective(model) to return a k×k matrix where k=$k parameters",
-                ),
+                "Misspecified form for GMM models requires hessian_objective(model) to return a k×k matrix where k=$k parameters",
+            ),
             )
         end
     end
@@ -318,8 +318,8 @@ function _check_dimensions(form::VarianceForm, model)
         if hessian_objective(model) === nothing
             throw(
                 ArgumentError(
-                    "Misspecified form for overidentified models (GMM-like) requires hessian_objective(model) to return a k×k matrix where k=$k parameters",
-                ),
+                "Misspecified form for overidentified models (GMM-like) requires hessian_objective(model) to return a k×k matrix where k=$k parameters",
+            ),
             )
         end
     end
@@ -335,11 +335,11 @@ end
 Check compatibility of provided matrices for manual API.
 """
 function _check_matrix_compatibility(
-    form::Information,
-    Z::AbstractMatrix,
-    cross_score_mat,
-    hessian_objective,
-    W,
+        form::Information,
+        Z::AbstractMatrix,
+        cross_score_mat,
+        hessian_objective,
+        W
 )
     n, m = size(Z)
 
@@ -348,8 +348,8 @@ function _check_matrix_compatibility(
         if k_h != k_h2
             throw(
                 ArgumentError(
-                    "hessian_objective must be square, got size $(size(hessian_objective))",
-                ),
+                "hessian_objective must be square, got size $(size(hessian_objective))",
+            ),
             )
         end
     end
@@ -359,8 +359,8 @@ function _check_matrix_compatibility(
         if m_cs != m_cs2 || m_cs != m
             throw(
                 ArgumentError(
-                    "cross_score must be m×m where m=$m moment conditions, got size $(size(cross_score_mat))",
-                ),
+                "cross_score must be m×m where m=$m moment conditions, got size $(size(cross_score_mat))",
+            ),
             )
         end
     end
@@ -368,18 +368,18 @@ function _check_matrix_compatibility(
     if hessian_objective === nothing && cross_score_mat === nothing
         throw(
             ArgumentError(
-                "Information form requires either hessian_objective or cross_score",
-            ),
+            "Information form requires either hessian_objective or cross_score",
+        ),
         )
     end
 end
 
 function _check_matrix_compatibility(
-    form::Misspecified,
-    Z::AbstractMatrix,
-    cross_score_mat,
-    hessian_objective,
-    W,
+        form::Misspecified,
+        Z::AbstractMatrix,
+        cross_score_mat,
+        hessian_objective,
+        W
 )
     n, m = size(Z)
 
@@ -391,8 +391,8 @@ function _check_matrix_compatibility(
     if m_cs != m_cs2 || m_cs != m
         throw(
             ArgumentError(
-                "cross_score must be m×m where m=$m moment conditions, got size $(size(cross_score_mat))",
-            ),
+            "cross_score must be m×m where m=$m moment conditions, got size $(size(cross_score_mat))",
+        ),
         )
     end
 
@@ -401,8 +401,8 @@ function _check_matrix_compatibility(
         if w_m != w_m2 || w_m != m
             throw(
                 ArgumentError(
-                    "Weight matrix W must be m×m where m=$m, got size $(size(W))",
-                ),
+                "Weight matrix W must be m×m where m=$m, got size $(size(W))",
+            ),
             )
         end
     end

@@ -19,10 +19,10 @@ Simulate VAR process given innovations and initial conditions.
 - Simulated data matrix (T × n_vars)
 """
 function simulate_var(
-    model::VARModel{T},
-    innovations::AbstractMatrix{T},
-    Y_init::AbstractMatrix{T};
-    burn_in::Int = 0,
+        model::VARModel{T},
+        innovations::AbstractMatrix{T},
+        Y_init::AbstractMatrix{T};
+        burn_in::Int = 0
 ) where {T}
     n_lags_val = n_lags(model)
     n_vars_val = n_vars(model)
@@ -36,7 +36,7 @@ function simulate_var(
         model.coefficients.lags,
         innovations,
         Y_init;
-        burn_in = burn_in,
+        burn_in = burn_in
     )
 
     # Return data after burn-in
@@ -57,12 +57,12 @@ last `n_lags` rows of `Y_init`, so any contents there on entry are ignored.
 bootstrap path reuse a single simulation buffer across every replication.
 """
 function simulate_var!(
-    Y_sim::AbstractMatrix{T},
-    intercept::AbstractVector{T},
-    lags::AbstractArray{T,3},
-    innovations::AbstractMatrix{T},
-    Y_init::AbstractMatrix{T};
-    burn_in::Int = 0,
+        Y_sim::AbstractMatrix{T},
+        intercept::AbstractVector{T},
+        lags::AbstractArray{T, 3},
+        innovations::AbstractMatrix{T},
+        Y_init::AbstractMatrix{T};
+        burn_in::Int = 0
 ) where {T}
     n_vars_val = size(intercept, 1)
     n_lags_val = size(lags, 3)
@@ -132,12 +132,12 @@ Forecast h periods ahead from VAR model.
 - If `include_draws=true`: NamedTuple with `forecast`, `draws`, and `bands`
 """
 function forecast(
-    model::VARModel{T},
-    h::Int;
-    Y_init::Union{Nothing,AbstractMatrix{T}} = nothing,
-    include_draws::Bool = false,
-    n_draws::Int = 1000,
-    coverage::Vector{Float64} = [0.68, 0.90, 0.95],
+        model::VARModel{T},
+        h::Int;
+        Y_init::Union{Nothing, AbstractMatrix{T}} = nothing,
+        include_draws::Bool = false,
+        n_draws::Int = 1000,
+        coverage::Vector{Float64} = [0.68, 0.90, 0.95]
 ) where {T}
     h > 0 || throw(ArgumentError("forecast horizon h must be positive"))
 
@@ -178,7 +178,7 @@ function forecast(
             forecast = forecast_point,
             draws = forecast_draws,
             bands = forecast_bands,
-            coverage = coverage,
+            coverage = coverage
         )
     end
 end
@@ -189,8 +189,8 @@ end
 Compute forecast confidence bands from draws.
 """
 function compute_forecast_bands(
-    forecast_draws::Array{T,3},
-    coverage::Vector{Float64},
+        forecast_draws::Array{T, 3},
+        coverage::Vector{Float64}
 ) where {T}
     n_coverage = length(coverage)
     h, n_vars = size(forecast_draws)[2:3]
@@ -234,11 +234,11 @@ Simulate VAR using structural shocks.
 - Simulated data matrix
 """
 function simulate_structural(
-    model::VARModel{T},
-    identification::AbstractIdentification,
-    structural_shocks::AbstractMatrix{T},
-    Y_init::AbstractMatrix{T};
-    burn_in::Int = 0,
+        model::VARModel{T},
+        identification::AbstractIdentification,
+        structural_shocks::AbstractMatrix{T},
+        Y_init::AbstractMatrix{T};
+        burn_in::Int = 0
 ) where {T}
     # Get impact matrix
     P = rotation_matrix(model, identification)
@@ -262,8 +262,8 @@ Compute historical decomposition of observed data into structural shocks.
 - NamedTuple with `contributions` (T × n_vars × n_shocks) and `initial_condition` (T × n_vars)
 """
 function historical_decomposition(
-    model::VARModel{T},
-    identification::AbstractIdentification,
+        model::VARModel{T},
+        identification::AbstractIdentification
 ) where {T}
     n_lags_val = n_lags(model)
     n_vars_val = n_vars(model)
@@ -303,7 +303,7 @@ function historical_decomposition(
     return (
         contributions = contributions,
         initial_condition = initial_condition,
-        structural_shocks = structural_shocks,
+        structural_shocks = structural_shocks
     )
 end
 
@@ -324,8 +324,8 @@ Compute forecast error variance decomposition from IRFs.
 - Array (horizon × n_vars × n_shocks) with variance shares (sum to 1 across shocks)
 """
 function variance_decomposition(
-    irf::IRFResult{T};
-    horizon_spec::Union{Nothing,Int} = nothing,
+        irf::IRFResult{T};
+        horizon_spec::Union{Nothing, Int} = nothing
 ) where {T}
     irf_array = irf.irf  # (H+1, n_vars, n_shocks)
     H, n_vars_val, n_shocks = size(irf_array)

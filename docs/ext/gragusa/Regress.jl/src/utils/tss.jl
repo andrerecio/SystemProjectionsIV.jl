@@ -66,10 +66,10 @@ end
 Compute the F-statistic for testing joint significance of coefficients.
 """
 function Fstat(
-    coef::AbstractVector{T},
-    matrix_vcov::AbstractMatrix{T},
-    has_intercept::Bool,
-) where {T<:AbstractFloat}
+        coef::AbstractVector{T},
+        matrix_vcov::AbstractMatrix{T},
+        has_intercept::Bool
+) where {T <: AbstractFloat}
     coefF = copy(coef)
     length(coef) == has_intercept && return T(NaN)
     if has_intercept

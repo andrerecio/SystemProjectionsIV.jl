@@ -158,7 +158,7 @@ end
 _leverage_transform(::CR2, M) = Symmetric(M)^(-1 / 2)
 _leverage_transform(::CR3, M) = inv(Symmetric(M))
 
-function _residual_adjustment_cr(k::Union{CR2,CR3}, m::RegressionModel)
+function _residual_adjustment_cr(k::Union{CR2, CR3}, m::RegressionModel)
     X = modelmatrix(m)
     XX = bread(m)
     wts = weights(m)
@@ -215,12 +215,12 @@ This is the generic implementation that works with any model implementing the Re
 
 """
 function aVar(
-    k::AbstractAsymptoticVarianceEstimator,
-    m::StatsBase.RegressionModel;
-    demean = false,
-    prewhite = false,
-    scale = true,
-    kwargs...,
+        k::AbstractAsymptoticVarianceEstimator,
+        m::StatsBase.RegressionModel;
+        demean = false,
+        prewhite = false,
+        scale = true,
+        kwargs...
 )
     # Set kernel weights if needed (for HAC with automatic bandwidth)
     setkernelweights!(k, m)
@@ -262,14 +262,14 @@ function aVar(k::CR, m::RegressionModel; scale = true, kwargs...)
 end
 
 unlock_kernel!(k::AbstractAsymptoticVarianceEstimator) = return false
-function unlock_kernel!(k::HAC{T}) where {T<:Union{NeweyWest,Andrews}}
+function unlock_kernel!(k::HAC{T}) where {T <: Union{NeweyWest, Andrews}}
     wlock = k.wlock[1]
     k.wlock .= true
     return wlock
 end
 
 lock_kernel!(k::AbstractAsymptoticVarianceEstimator, wlock) = nothing
-function lock_kernel!(k::HAC{T}, wlock) where {T<:Union{NeweyWest,Andrews}}
+function lock_kernel!(k::HAC{T}, wlock) where {T <: Union{NeweyWest, Andrews}}
     k.wlock .= wlock
 end
 
@@ -280,10 +280,10 @@ Compute the sandwich variance-covariance matrix for a RegressionModel.
 
 """
 function StatsAPI.vcov(
-    k::AbstractAsymptoticVarianceEstimator,
-    m::RegressionModel;
-    dofadjust = true,
-    kwargs...,
+        k::AbstractAsymptoticVarianceEstimator,
+        m::RegressionModel;
+        dofadjust = true,
+        kwargs...
 )
     # Compute meat
     A = aVar(k, m; kwargs...)
@@ -411,7 +411,7 @@ function CachedCRModel(k::CR, m::RegressionModel)
     # Compute leverage adjustments based on estimator type
     H = _compute_leverage_adjustments(k, X, XX, wts, grouped_arrays, cluster_indices)
 
-    cache = CRModelCache{T,typeof(H)}(grouped_arrays, cluster_indices, signs, XX, H, p, n)
+    cache = CRModelCache{T, typeof(H)}(grouped_arrays, cluster_indices, signs, XX, H, p, n)
     return CachedCRModel(k, cache)
 end
 
@@ -429,12 +429,12 @@ function _compute_leverage_adjustments(k::CR1, X, XX, wts, grouped_arrays, clust
 end
 
 function _compute_leverage_adjustments(
-    k::Union{CR2,CR3},
-    X,
-    XX,
-    wts,
-    grouped_arrays,
-    cluster_indices,
+        k::Union{CR2, CR3},
+        X,
+        XX,
+        wts,
+        grouped_arrays,
+        cluster_indices
 )
     # Precompute BlockDiagonal leverage adjustments using type-dispatched transform
     T = eltype(X)

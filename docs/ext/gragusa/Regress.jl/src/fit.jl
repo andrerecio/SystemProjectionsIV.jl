@@ -84,8 +84,8 @@ See also: [`iv`](@ref), [`OLSEstimator`](@ref)
 function ols(@nospecialize(df), formula::FormulaTerm; kwargs...)
     has_iv(formula) && throw(
         ArgumentError(
-            "Formula contains instrumental variables. Use `iv(TSLS(), df, formula)` instead.",
-        ),
+        "Formula contains instrumental variables. Use `iv(TSLS(), df, formula)` instead.",
+    ),
     )
     return fit_ols(df, formula; kwargs...)
 end
@@ -168,13 +168,13 @@ coef(model)  # One coefficient will be 0
 See also: [`ols(df, formula)`](@ref), [`OLSMatrixEstimator`](@ref)
 """
 function ols(
-    X::AbstractMatrix{<:Real},
-    y::AbstractVector{<:Real};
-    factorization::Symbol = :auto,
-    collinearity::Symbol = :qr,
-    tol::Real = 1e-8,
-    weights::Union{Nothing,AbstractVector} = nothing,
-    has_intercept::Bool = true,
+        X::AbstractMatrix{<:Real},
+        y::AbstractVector{<:Real};
+        factorization::Symbol = :auto,
+        collinearity::Symbol = :qr,
+        tol::Real = 1e-8,
+        weights::Union{Nothing, AbstractVector} = nothing,
+        has_intercept::Bool = true
 )
 
     # Validate inputs
@@ -228,13 +228,14 @@ function ols(
     end
 
     # Fit using unified solver
-    pp, basis_coef, _ = fit_ols_core!(
+    pp, basis_coef,
+    _ = fit_ols_core!(
         rr,
         X_mat,
         factorization;
         tol = tol,
         save_matrices = true,
-        collinearity = collinearity,
+        collinearity = collinearity
     )
 
     # Compute RSS efficiently
@@ -259,7 +260,7 @@ function ols(
         n,
         dof_model,
         0,
-        dof_res,  # No fixed effects
+        dof_res  # No fixed effects
     )
 
     # Standard errors
@@ -274,7 +275,7 @@ function ols(
     # Default vcov estimator (HC1)
     default_vcov = CovarianceMatrices.HC1()
 
-    return OLSMatrixEstimator{T,typeof(pp),typeof(default_vcov)}(
+    return OLSMatrixEstimator{T, typeof(pp), typeof(default_vcov)}(
         rr,
         pp,
         basis_coef,
@@ -289,7 +290,7 @@ function ols(
         vcov_matrix,
         se,
         t_stats,
-        p_values,
+        p_values
     )
 end
 
@@ -377,8 +378,8 @@ See also: [`ols`](@ref), [`TSLS`](@ref), [`LIML`](@ref), [`Fuller`](@ref), [`KCl
 function _check_iv_formula(formula::FormulaTerm)
     !has_iv(formula) && throw(
         ArgumentError(
-            "Formula does not contain instrumental variables. Use `ols(df, formula)` instead.",
-        ),
+        "Formula does not contain instrumental variables. Use `ols(df, formula)` instead.",
+    ),
     )
 end
 
@@ -461,12 +462,12 @@ model_robust = model + vcov(HC1())
 See also: [`iv(::TSLS, df, formula)`](@ref), [`IVMatrixEstimator`](@ref)
 """
 function iv(
-    ::TSLS,
-    Z::AbstractMatrix{<:Real},
-    X::AbstractMatrix{<:Real},
-    y::AbstractVector{<:Real};
-    has_intercept::Bool = true,
-    n_endogenous::Int = 1,
+        ::TSLS,
+        Z::AbstractMatrix{<:Real},
+        X::AbstractMatrix{<:Real},
+        y::AbstractVector{<:Real};
+        has_intercept::Bool = true,
+        n_endogenous::Int = 1
 )
 
     # Validate inputs
@@ -487,8 +488,8 @@ function iv(
     k_instr = k_z - k_exo  # Excluded instruments
     k_instr >= n_endogenous || throw(
         ArgumentError(
-            "Not enough instruments: $k_instr excluded instruments < $n_endogenous endogenous variables",
-        ),
+        "Not enough instruments: $k_instr excluded instruments < $n_endogenous endogenous variables",
+    ),
     )
 
     # Determine numeric type
@@ -561,7 +562,7 @@ function iv(
         y_vec,
         residuals,
         Matrix{T}(invXhatXhat),
-        n_endogenous,
+        n_endogenous
     )
 
     # Default vcov (HC1)
@@ -580,7 +581,7 @@ function iv(
     t_stats = beta ./ se
     p_values = 2 .* tdistccdf.(dof_res, abs.(t_stats))
 
-    return IVMatrixEstimator{T,typeof(default_vcov)}(
+    return IVMatrixEstimator{T, typeof(default_vcov)}(
         beta,
         postestimation,
         basis_coef,
@@ -595,6 +596,6 @@ function iv(
         vcov_matrix,
         se,
         t_stats,
-        p_values,
+        p_values
     )
 end

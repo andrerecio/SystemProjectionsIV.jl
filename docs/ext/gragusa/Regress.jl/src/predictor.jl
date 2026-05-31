@@ -8,7 +8,7 @@ When `save=:minimal` is used, X and X_reduced are empty matrices to save memory.
 Use `has_predictor_data(pp)` to check if matrices are available.
 """
 
-abstract type OLSLinearPredictor{T<:AbstractFloat} end
+abstract type OLSLinearPredictor{T <: AbstractFloat} end
 
 """
     OLSPredictorChol{T}
@@ -22,11 +22,11 @@ Fields:
 - `beta`: Full coefficient vector (with NaN for collinear)
 - `chol`: Cholesky factorization of X_reduced'X_reduced
 """
-mutable struct OLSPredictorChol{T<:AbstractFloat} <: OLSLinearPredictor{T}
+mutable struct OLSPredictorChol{T <: AbstractFloat} <: OLSLinearPredictor{T}
     X::Matrix{T}                            # Full model matrix (empty if save=:minimal)
     X_reduced::Matrix{T}                    # Non-collinear columns only (empty if save=:minimal)
     beta::Vector{T}                         # Coefficient estimates (full, with NaN)
-    chol::Cholesky{T,Matrix{T}}            # Cholesky factorization of X_reduced'X_reduced
+    chol::Cholesky{T, Matrix{T}}            # Cholesky factorization of X_reduced'X_reduced
 end
 
 """
@@ -41,11 +41,11 @@ Fields:
 - `beta`: Full coefficient vector (with NaN for collinear)
 - `qr`: QR factorization of X_reduced
 """
-mutable struct OLSPredictorQR{T<:AbstractFloat} <: OLSLinearPredictor{T}
+mutable struct OLSPredictorQR{T <: AbstractFloat} <: OLSLinearPredictor{T}
     X::Matrix{T}                            # Full model matrix (empty if save=:minimal)
     X_reduced::Matrix{T}                    # Non-collinear columns only (empty if save=:minimal)
     beta::Vector{T}                         # Coefficient estimates (full, with NaN)
-    qr::LinearAlgebra.QRCompactWY{T,Matrix{T}}   # QR factorization of X_reduced
+    qr::LinearAlgebra.QRCompactWY{T, Matrix{T}}   # QR factorization of X_reduced
 end
 
 """
@@ -129,11 +129,11 @@ Fields:
 - `beta`: Full coefficient vector (with 0/NaN for collinear)
 - `invXX`: (X'X)^(-1) for reduced columns (computed during sweep)
 """
-mutable struct OLSPredictorSweep{T<:AbstractFloat} <: OLSLinearPredictor{T}
+mutable struct OLSPredictorSweep{T <: AbstractFloat} <: OLSLinearPredictor{T}
     X::Matrix{T}                            # Full model matrix (empty if save=:minimal)
     X_reduced::Matrix{T}                    # Non-collinear columns only (empty if save=:minimal)
     beta::Vector{T}                         # Coefficient estimates (full, with NaN for collinear)
-    invXX::Symmetric{T,Matrix{T}}          # (X'X)^(-1) for reduced columns
+    invXX::Symmetric{T, Matrix{T}}          # (X'X)^(-1) for reduced columns
 end
 
 function clear_predictor_data!(pp::OLSPredictorSweep{T}) where {T}

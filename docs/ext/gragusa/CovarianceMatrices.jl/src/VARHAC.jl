@@ -1,11 +1,13 @@
 function avar(
-    k::VARHAC{S,L},
-    X::AbstractMatrix{R};
-    kwargs...,
-) where {S<:LagSelector,L<:SameLags,R<:Real}
+        k::VARHAC{S, L},
+        X::AbstractMatrix{R};
+        kwargs...
+) where {S <: LagSelector, L <: SameLags, R <: Real}
     lagstrategy = isa(k.selector, AICSelector) ? :aic : :bic
-    Ω, AICs, BICs, order_aic, order_bic =
-        _var_selection_samelag(X, maxlags(k)...; lagstrategy = lagstrategy, demean = false)
+    Ω, AICs,
+    BICs,
+    order_aic,
+    order_bic = _var_selection_samelag(X, maxlags(k)...; lagstrategy = lagstrategy, demean = false)
     k.AICs = AICs
     k.BICs = BICs
     k.order_aic = order_aic
@@ -14,13 +16,15 @@ function avar(
 end
 
 function avar(
-    k::VARHAC{S,L},
-    X::AbstractMatrix{R};
-    kwargs...,
-) where {S<:LagSelector,L<:DifferentOwnLags,R<:Real}
+        k::VARHAC{S, L},
+        X::AbstractMatrix{R};
+        kwargs...
+) where {S <: LagSelector, L <: DifferentOwnLags, R <: Real}
     lagstrategy = isa(k.selector, AICSelector) ? :aic : :bic
-    Ω, AICs, BICs, order_aic, order_bic =
-        _var_selection_ownlag(X, maxlags(k)...; lagstrategy = lagstrategy, demean = false)
+    Ω, AICs,
+    BICs,
+    order_aic,
+    order_bic = _var_selection_ownlag(X, maxlags(k)...; lagstrategy = lagstrategy, demean = false)
     k.AICs = AICs
     k.BICs = BICs
     k.order_aic = order_aic
@@ -29,10 +33,10 @@ function avar(
 end
 
 function avar(
-    k::VARHAC{S,L},
-    X::AbstractMatrix{R};
-    kwargs...,
-) where {S<:LagSelector,L<:FixedLags,R<:Real}
+        k::VARHAC{S, L},
+        X::AbstractMatrix{R};
+        kwargs...
+) where {S <: LagSelector, L <: FixedLags, R <: Real}
     lagstrategy = isa(k.selector, AICSelector) ? :aic : :bic
     Ω, AICs, BICs, order_aic, order_bic = _var_fixed(X, maxlags(k)...; demean = false)
     k.AICs = AICs
@@ -43,15 +47,17 @@ function avar(
 end
 
 function avar(
-    k::VARHAC{S,L},
-    X::AbstractMatrix{R};
-    kwargs...,
-) where {S<:LagSelector,L<:AutoLags,R<:Real}
+        k::VARHAC{S, L},
+        X::AbstractMatrix{R};
+        kwargs...
+) where {S <: LagSelector, L <: AutoLags, R <: Real}
     T, N = size(X)
     K_auto = maxlags(k, T, N)
     lagstrategy = isa(k.selector, AICSelector) ? :aic : :bic
-    Ω, AICs, BICs, order_aic, order_bic =
-        _var_selection_samelag(X, K_auto; lagstrategy = lagstrategy, demean = false)
+    Ω, AICs,
+    BICs,
+    order_aic,
+    order_bic = _var_selection_samelag(X, K_auto; lagstrategy = lagstrategy, demean = false)
     k.AICs = AICs
     k.BICs = BICs
     k.order_aic = order_aic
@@ -60,11 +66,11 @@ function avar(
 end
 
 function _var_selection_samelag(
-    X::AbstractMatrix{R},
-    K;
-    lagstrategy::Symbol = :aic,
-    demean::Bool = false,
-) where {R<:Real}
+        X::AbstractMatrix{R},
+        K;
+        lagstrategy::Symbol = :aic,
+        demean::Bool = false
+) where {R <: Real}
     T, m = size(X)
 
     # Validate inputs
@@ -193,12 +199,12 @@ function _var_selection_samelag(
 end
 
 function _var_selection_ownlag(
-    X::AbstractMatrix{R},
-    K,
-    Kₓ;
-    lagstrategy::Symbol = :aic,
-    demean::Bool = false,
-) where {R<:Real}
+        X::AbstractMatrix{R},
+        K,
+        Kₓ;
+        lagstrategy::Symbol = :aic,
+        demean::Bool = false
+) where {R <: Real}
     ## K is the maximum own lag
     ## Kₓ is the maximum cross lag
     T, m = size(X)
@@ -314,7 +320,7 @@ function _var_selection_ownlag(
     return S0, AICs, BICs, order_aic, order_bic
 end
 
-function _var_fixed(X::AbstractMatrix{R}, K; demean::Bool = false) where {R<:Real}
+function _var_fixed(X::AbstractMatrix{R}, K; demean::Bool = false) where {R <: Real}
     T, m = size(X)
 
     # Validate inputs
@@ -357,7 +363,7 @@ function _var_fixed(X::AbstractMatrix{R}, K; demean::Bool = false) where {R<:Rea
     return S0, [], [], [K], [K]
 end
 
-function delag(X::Matrix{R}, K::Int) where {R<:Real}
+function delag(X::Matrix{R}, K::Int) where {R <: Real}
     T, n = size(X)
     if K >= T
         throw(ArgumentError("Number of lags K=$K must be less than sample size T=$T"))
@@ -412,13 +418,13 @@ result = select_lags(Z, m, K, position_own, lags_others, lags_own)
 ```
 """
 function select_lags(
-    Z::Matrix{T},
-    m::Int,
-    K::Int,
-    position_own::Int,
-    lags_own::Int,
-    lags_others::Int,
-) where {T<:Real}
+        Z::Matrix{T},
+        m::Int,
+        K::Int,
+        position_own::Int,
+        lags_own::Int,
+        lags_others::Int
+) where {T <: Real}
     # Check if the dimensions are correct
     s = position_own
     r = lags_others
@@ -430,7 +436,7 @@ function select_lags(
     # Calculate the indices for the r lags of columns 1,2,...,s,s+2,...,m
     r_indices = vcat(
         [((k - 1) * m .+ (1:(s - 1))) for k in 1:r]...,
-        [((k - 1) * m .+ ((s + 1):m)) for k in 1:r]...,
+        [((k - 1) * m .+ ((s + 1):m)) for k in 1:r]...
     )
     # Calculate the indices for the v lags of column s
     v_indices = [(k - 1) * m .+ s for k in 1:v]
@@ -452,7 +458,7 @@ of `nancov` in `NaNStatistics.jl`, which computes pairwise covariances using all
 each pair of columns.
 
 """
-function nancov(X::AbstractMatrix{T}; corrected::Bool = true) where {T<:Real}
+function nancov(X::AbstractMatrix{T}; corrected::Bool = true) where {T <: Real}
     n, p = size(X)
 
     valid_rows = trues(n)
@@ -502,12 +508,12 @@ function nancov(X::AbstractMatrix{T}; corrected::Bool = true) where {T<:Real}
 end
 
 function _cov(
-    x::AbstractVector,
-    y::AbstractVector,
-    corrected::Bool,
-    μᵪ::Number,
-    μᵧ::Number,
-    valid_rows::BitVector,
+        x::AbstractVector,
+        y::AbstractVector,
+        corrected::Bool,
+        μᵪ::Number,
+        μᵧ::Number,
+        valid_rows::BitVector
 )
     # Calculate covariance
     σᵪᵧ = ∅ = zero(typeof(μᵪ * μᵧ))
@@ -524,7 +530,7 @@ function _cov(
 end
 
 ## Used for testing
-function nancov_slow(X::AbstractMatrix{T}; corrected::Bool = true) where {T<:Real}
+function nancov_slow(X::AbstractMatrix{T}; corrected::Bool = true) where {T <: Real}
     # Remove rows with any NaN values
     complete_rows = .!any(isnan.(X), dims = 2)
     if !any(complete_rows)
