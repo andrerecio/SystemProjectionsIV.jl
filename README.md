@@ -1,6 +1,7 @@
 # SystemProjectionsIV.jl
 
 [![codecov](https://codecov.io/gh/andrerecio/SystemProjectionsIV.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/andrerecio/SystemProjectionsIV.jl)
+[![Aqua QA](https://juliatesting.github.io/Aqua.jl/dev/assets/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 A Julia implementation of the **System Projections IV (SP-IV)** estimator of Lewis & Mertens (2024). SP-IV identifies structural macroeconomic relationships (such as the Phillips Curve) by exploiting external instruments through impulse responses rather than raw variables, conditioning on a rich set of predetermined controls so that many lags of instruments can be used without losing identifying power.
 
