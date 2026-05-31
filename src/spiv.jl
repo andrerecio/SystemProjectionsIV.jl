@@ -70,8 +70,13 @@ Keyword arguments controlling inference (docs/technical.md §6–7):
 - `grid_length` — points per parameter in the confidence-set grid (default 30).
 - `grid_scale` — half-width of the grid box in standard errors: each parameter ranges
   over `β̂ ± grid_scale·se` (default 10).
+- `hac` — bandwidth rule for the IRF HAC standard errors: `:fixed` (default; lag
+  truncation = horizon), `:neweywest` (automatic Newey–West 1994), or `:andrews`
+  (automatic Andrews 1991).
 
-The IRF blocks remain NaN stubs until Phase 4.
+The outcome IRF (`H × Nz`) and endogenous IRF (`H × K × Nz`), with per-horizon Newey–West
+HAC standard errors and `1 − α` normal bands, are in `result.irf_outcome` /
+`result.irf_endogenous` (docs/technical.md §3.3, eq. 11).
 """
 function spiv(
     y::AbstractVector{<:Real},
@@ -84,6 +89,7 @@ function spiv(
     ξ::Real = 0.10,
     grid_length::Int = 30,
     grid_scale::Real = 10,
+    hac::Symbol = :fixed,
 )
     # --- promote to a common float type -----------------------------------
     yv = collect(Float64, y)
@@ -98,6 +104,8 @@ function spiv(
 
     # --- validation -------------------------------------------------------
     H ≥ 1 || throw(ArgumentError("H must be ≥ 1, got $H"))
+    hac in (:fixed, :neweywest, :andrews) ||
+        throw(ArgumentError("hac must be :fixed, :neweywest, or :andrews, got :$hac"))
     size(Ym, 1) == T ||
         throw(DimensionMismatch("Y must have T = $T rows, got $(size(Ym, 1))"))
     size(Xm, 1) == T ||
@@ -189,6 +197,10 @@ function spiv(
         grid_scale,
     )
 
+    # --- impulse responses with HAC standard errors (docs/technical.md §3.3) ---
+    irf_outcome, irf_endogenous =
+        _irf_blocks(y_perp, Y_perp, Z_perp, collect(Czz), H, K, Nz, T_eff, α, hac)
+
     return SPIVResult{Float64,SPIVwithLP}(
         SPIVwithLP(),
         β,
@@ -196,8 +208,8 @@ function spiv(
         û,
         weak,
         robust,
-        IRFBlock{Float64}(H, Nz),
-        IRFBlock{Float64}(H, K, Nz),
+        irf_outcome,
+        irf_endogenous,
         H,
         K,
         Nz,

@@ -3,10 +3,16 @@ module SystemProjectionsIV
 using LinearAlgebra: diag, qr, Symmetric, I, inv, kron, tr, eigvals, dot
 using StatsBase
 using StatsFuns: norminvcdf, chisqinvcdf
+using CovarianceMatrices: aVar, Bartlett, NeweyWest, Andrews
+using Printf: @printf, @sprintf
+using RecipesBase
 
 include("types.jl")
 include("inference.jl")
+include("irf.jl")
 include("spiv.jl")
+include("show.jl")
+include("recipes.jl")
 
 export AbstractSPIVSpec, SPIVwithLP, SPIVwithVAR
 export ForecastErrors, WeakIVDiagnostic, RobustInference, IRFBlock, SPIVResult

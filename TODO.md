@@ -96,35 +96,67 @@ Implemented in `src/inference.jl`; wired into `spiv()` (populates `weak_iv` and 
 
 ---
 
-## Phase 4 — IRFs and HAC standard errors
+## Phase 4 — IRFs and HAC standard errors ✅
 
 Goal: outcome and endogenous IRFs with HAC bands populated in `SPIVResult`.
 
-- [ ] Compute outcome IRF (`H × Nz`) and endogenous IRF (`H · K × Nz`) from the residualised projections.
-- [ ] Newey–West HAC SEs per horizon `h` with lag truncation `h - 1`. Use the registered `CovarianceMatrices.jl` (add it to `Project.toml` `[deps]` + `[compat]` here, the phase that first imports it); otherwise implement directly, cited from `docs/ext/gragusa/CovarianceMatrices.jl`.
-- [ ] Populate `result.irf.outcome` and `result.irf.endogenous` with point, SE, 95% lower / upper bounds.
-- [ ] Tests:
-  - HAC SE reduces to OLS SE when residuals are iid (closed-form check on a designed input).
-  - IRF point estimates equal those implied by the stacked-IRF representation from Phase 2.
-  - Bands have positive width and bracket the point estimate.
+Implemented in `src/irf.jl`; wired into `spiv()` (populates `irf_outcome` / `irf_endogenous`).
 
-**Exit criteria:** all tests pass; the README quick-start runs end-to-end and prints a non-trivial IRF table.
+- [x] Compute outcome IRF (`H × Nz`) and endogenous IRF (`H × K × Nz`) from the residualised projections via eq. (11): `Θ̂ = (·⊥ Z⊥' / T)(Z⊥Z⊥'/T)^{-1/2}` (docs/technical.md §3.3).
+- [x] Newey–West HAC SEs per horizon `h` with lag truncation `h - 1`, using the registered `CovarianceMatrices.jl` (`aVar` + fixed-bandwidth `Bartlett(h)`, which equals Newey–West at lag `h-1`; horizon 0 ⇒ Γ₀-only White/HC0). `CovarianceMatrices` added to `Project.toml` `[deps]` + `[compat]`. Per-row sandwich `(X'X)⁻¹ · meat · (X'X)⁻¹` on the standardised instruments.
+- [x] Populate `result.irf_outcome` and `result.irf_endogenous` with point, SE, and `1 − α` normal bands (`z = norminvcdf(1 − α/2)`).
+- [x] Tests (`test/test_irf.jl`):
+  - HAC SE matches an explicit Bartlett sandwich at every horizon; horizon 0 reduces to the White/HC0 SE.
+  - IRF point estimates equal the independent eq. (11) computation and reproduce β̂ through the stacked-IRF OLS (eq. 13).
+  - Bands have positive width and bracket the point estimate; type stability via `@inferred`.
+
+**Exit criteria:** all tests pass ✅ (`Pkg.test()` green). `summary`/`show` printing and the README quick-start doctest are deferred to Phase 5 (IRFs are exposed via the `result.irf_outcome` / `result.irf_endogenous` fields).
 
 ---
 
-## Phase 5 — VAR variant, polish, v0.1.0
+## Phase 5a — polish + v0.1.0 ✅
 
-Goal: ship.
+Goal: ship the LP variant with the polish layer.
 
-- [ ] `SPIVwithVAR` variant: compute forecast errors `X̂_t^⊥(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j}` using an internal VAR estimator reimplemented (and cited) from `docs/ext/gragusa/MacroEconometricsTools.jl` (appendix A of `docs/technical.md`).
-- [ ] Dispatch: `spiv(y, Y, X, Z, ::SPIVwithVAR; ...)` returns an `SPIVResult` with the same shape as the LP variant.
-- [ ] `Base.show(io, ::SPIVResult)` and a `summary(::SPIVResult)` method printing a clean table.
-- [ ] Plotting recipe for IRFs (Plots.jl recipe via `RecipesBase`, to avoid pulling Plots into the main dependency tree).
-- [ ] Finish `src/utilities.jl`: the dead `VARModel`-dependent functions were already trimmed in the 2026-05-31 surgery (lag/matrix/companion utilities retained, cited). Here, `include` it and wire the retained utilities into the VAR variant.
-- [ ] Doctests in the README quick-start and the `spiv` docstring.
-- [ ] Tag `v0.1.0`.
+- [x] Automatic-bandwidth HAC option for the IRFs: `hac` kwarg on `spiv` — `:fixed`
+  (default; lag truncation = horizon, the paper rule), `:neweywest` (automatic
+  Newey–West 1994), `:andrews` (automatic Andrews 1991), all via `CovarianceMatrices.jl`
+  (`Bartlett{NeweyWest}` / `{Andrews}`). Implemented in `src/irf.jl` (`_hac_kernel`).
+- [x] `Base.show(io, ::SPIVResult)` (compact) and `Base.show(io, ::MIME"text/plain", …)`
+  (a clean Printf table: coefficients with SE/z/CI, weak-IV verdict, robust bounds, IRF
+  shapes) — `src/show.jl`. No PrettyTables dependency.
+- [x] IRF plotting recipe via `RecipesBase` (`@recipe`, `response = :outcome`/`:endogenous`,
+  point + ribbon bands), no `Plots` hard dependency — `src/recipes.jl`.
+- [x] README quick-start rewritten as a runnable, test-verified example; `version = "0.1.0"`.
+- [x] Tests (`test/test_show.jl`): auto-HAC (`:fixed` ≡ default; `:neweywest`/`:andrews`
+  finite & differing), `show` content, recipe series via `apply_recipe`, README run.
 
-**Exit criteria:** README quick-start runs as a doctest; both `SPIVwithLP` and `SPIVwithVAR` produce comparable estimates on the same data (within sampling tolerance); CI green; version bumped and tagged.
+**Exit criteria:** `Pkg.test()` green ✅. Creating the actual `v0.1.0` git tag/release is
+left to the user (like commits/pushes). Full Documenter doctest site deferred.
+
+---
+
+## Phase 5b — VAR variant + utilities audit (deferred)
+
+Goal: the `SPIVwithVAR` variant. **Decision (recorded):** best-reading of Appendix A
+**with the VAR-IRF restriction**.
+
+- [ ] `SPIVwithVAR` variant: fit a VAR(p) on the stacked vector `[Y_t; y_t; z_t]` (p a
+  kwarg; the VAR's own lags replace the LP control-residualization), build forecast errors
+  `X̂_t^⊥(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j}` (eq. A.3), select rows for `ŷ⊥/Ŷ⊥/Ẑ⊥`, and impose
+  VAR dynamics on the IRFs via `Θ̂^VAR = Â^h D̂` (the eq. 9 replacement, §4.2). Use an
+  internal VAR estimator reimplemented (and cited) from `docs/ext/gragusa/MacroEconometricsTools.jl`.
+  No R reference exists for this variant — validate against the LP variant on shared data.
+- [ ] Dispatch: `spiv(y, Y, X, Z, ::SPIVwithVAR; ...)` returns an `SPIVResult` with the
+  same shape as the LP variant; refactor steps 2–5 into a shared path so LP and VAR reuse
+  the estimator/inference/IRF code (only step 1 — forecast-error construction — differs).
+- [ ] Finish `src/utilities.jl`: `include` it and wire the retained lag/`create_lags`/
+  `companion_form` utilities into the VAR estimator.
+- [ ] Caveat (§4.2): the AR test is **not** robust when VAR dynamics are imposed on IRFs
+  (use the FE-only AR version); the KLM test is robust.
+
+**Exit criteria:** both `SPIVwithLP` and `SPIVwithVAR` produce comparable estimates on the
+same data (within sampling tolerance); tests pass; CI green.
 
 ---
 
