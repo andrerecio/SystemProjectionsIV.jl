@@ -25,7 +25,7 @@ lag(x, 1)  # [NaN, 1, 2, 3, 4]
 lag(x, 2)  # [NaN, NaN, 1, 2, 3]
 ```
 """
-function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T <: AbstractFloat}
+function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T<:AbstractFloat}
     len = length(x)
     if n == 0
         return copy(x)
@@ -43,7 +43,7 @@ function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T <: Abstrac
     end
 end
 
-function lag(X::AbstractMatrix{T}, n::Int; default = T(NaN)) where {T <: AbstractFloat}
+function lag(X::AbstractMatrix{T}, n::Int; default = T(NaN)) where {T<:AbstractFloat}
     return hcat([lag(col, n; default = default) for col in eachcol(X)]...)
 end
 
@@ -59,7 +59,7 @@ Create matrix of lagged values for VAR estimation.
 # Returns
 - Matrix of size (T × (1 + n_vars * p)) with intercept and lags
 """
-function create_lags(X::AbstractMatrix{T}, p::Int) where {T <: AbstractFloat}
+function create_lags(X::AbstractMatrix{T}, p::Int) where {T<:AbstractFloat}
     n_obs, n_vars = size(X)
     n_cols = 1 + n_vars * p
 
@@ -91,8 +91,12 @@ In-place creation of lagged matrix for VAR estimation.
 - `p::Int`: Number of lags
 - `include_intercept::Bool`: Whether to include intercept column
 """
-function create_lags!(dest::AbstractMatrix{T}, X::AbstractMatrix{T}, p::Int,
-        include_intercept::Bool = true) where {T}
+function create_lags!(
+    dest::AbstractMatrix{T},
+    X::AbstractMatrix{T},
+    p::Int,
+    include_intercept::Bool = true,
+) where {T}
     n_obs, n_vars = size(X)
     offset = include_intercept ? 1 : 0
 
@@ -208,7 +212,7 @@ Build companion form matrix from VAR lag coefficients.
 # Returns
 - `F::Matrix{T}`: Companion matrix (n_vars*n_lags × n_vars*n_lags)
 """
-function companion_form(A::Array{T, 3}) where {T}
+function companion_form(A::Array{T,3}) where {T}
     n_vars, _, n_lags = size(A)
     n = n_vars * n_lags
 
@@ -244,7 +248,7 @@ end
 
 Akaike Information Criterion.
 """
-function aic(model::VARModel{T, OLSVAR}) where {T}
+function aic(model::VARModel{T,OLSVAR}) where {T}
     n, _, n_vars = size(model)
     n_lags = size(model.coefficients.lags, 3)
     k = n_vars^2 * n_lags + n_vars  # Total parameters
@@ -257,7 +261,7 @@ end
 
 Bayesian Information Criterion.
 """
-function bic(model::VARModel{T, OLSVAR}) where {T}
+function bic(model::VARModel{T,OLSVAR}) where {T}
     n, _, n_vars = size(model)
     n_lags = size(model.coefficients.lags, 3)
     k = n_vars^2 * n_lags + n_vars
@@ -270,7 +274,7 @@ end
 
 Hannan-Quinn Information Criterion.
 """
-function hqic(model::VARModel{T, OLSVAR}) where {T}
+function hqic(model::VARModel{T,OLSVAR}) where {T}
     n, _, n_vars = size(model)
     n_lags = size(model.coefficients.lags, 3)
     k = n_vars^2 * n_lags + n_vars
@@ -382,7 +386,7 @@ Base.size(model::VARModel) = (effective_obs(model), n_lags(model), n_vars(model)
 # Pretty printing
 # ============================================================================
 
-function Base.show(io::IO, model::VARModel{T, S}) where {T, S}
+function Base.show(io::IO, model::VARModel{T,S}) where {T,S}
     println(io, "VARModel{$T,$S}")
     println(io, "  Variables: ", join(model.names, ", "))
     println(io, "  Observations: ", effective_obs(model), " (", nobs(model), " total)")
@@ -392,6 +396,6 @@ function Base.show(io::IO, model::VARModel{T, S}) where {T, S}
     end
 end
 
-function Base.show(io::IO, ::MIME"text/plain", model::VARModel{T, S}) where {T, S}
+function Base.show(io::IO, ::MIME"text/plain", model::VARModel{T,S}) where {T,S}
     show(io, model)
 end

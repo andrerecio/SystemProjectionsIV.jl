@@ -12,9 +12,7 @@ using SystemProjectionsIV
         # pinning compat would break CI whenever upstream bumps their version.
         Aqua.test_all(
             SystemProjectionsIV;
-            deps_compat = (
-                ignore = [:LocalProjections, :MacroEconometricTools, :Regress],
-            ),
+            deps_compat = (ignore = [:LocalProjections, :MacroEconometricTools, :Regress],),
         )
     end
 

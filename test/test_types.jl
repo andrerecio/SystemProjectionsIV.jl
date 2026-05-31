@@ -26,9 +26,30 @@ using StatsBase
         @test (fe.H, fe.K, fe.Nz) == (H, K, Nz)
 
         # Dimension validation
-        @test_throws DimensionMismatch ForecastErrors(randn(H + 1, T_eff), Y_perp, Z_perp; H = H, K = K, Nz = Nz)
-        @test_throws DimensionMismatch ForecastErrors(y_perp, randn(H * K, T_eff + 1), Z_perp; H = H, K = K, Nz = Nz)
-        @test_throws DimensionMismatch ForecastErrors(y_perp, Y_perp, randn(Nz + 1, T_eff); H = H, K = K, Nz = Nz)
+        @test_throws DimensionMismatch ForecastErrors(
+            randn(H + 1, T_eff),
+            Y_perp,
+            Z_perp;
+            H = H,
+            K = K,
+            Nz = Nz,
+        )
+        @test_throws DimensionMismatch ForecastErrors(
+            y_perp,
+            randn(H * K, T_eff + 1),
+            Z_perp;
+            H = H,
+            K = K,
+            Nz = Nz,
+        )
+        @test_throws DimensionMismatch ForecastErrors(
+            y_perp,
+            Y_perp,
+            randn(Nz + 1, T_eff);
+            H = H,
+            K = K,
+            Nz = Nz,
+        )
     end
 
     @testset "WeakIVDiagnostic stub" begin
@@ -54,16 +75,21 @@ using StatsBase
         # Direct construction (N = 2)
         H, Nz = 6, 2
         b = IRFBlock(randn(H, Nz), randn(H, Nz), randn(H, Nz), randn(H, Nz))
-        @test b isa IRFBlock{Float64, 2}
+        @test b isa IRFBlock{Float64,2}
         @test size(b.point) == (H, Nz)
 
         # Shape mismatch
-        @test_throws DimensionMismatch IRFBlock(randn(H, Nz), randn(H + 1, Nz), randn(H, Nz), randn(H, Nz))
+        @test_throws DimensionMismatch IRFBlock(
+            randn(H, Nz),
+            randn(H + 1, Nz),
+            randn(H, Nz),
+            randn(H, Nz),
+        )
 
         # NaN-filled stub (N = 3)
         K = 4
         b3 = IRFBlock{Float64}(H, K, Nz)
-        @test b3 isa IRFBlock{Float64, 3}
+        @test b3 isa IRFBlock{Float64,3}
         @test size(b3.point) == (H, K, Nz)
         @test all(isnan, b3.point)
         @test all(isnan, b3.se)
@@ -74,42 +100,83 @@ using StatsBase
     @testset "SPIVResult stub constructor" begin
         H, K, Nz, Nx, T_eff = 5, 2, 3, 4, 80
         β = randn(K)
-        V = let A = randn(K, K); A * A' end          # PSD covariance
+        V = let A = randn(K, K);
+            A * A'
+        end          # PSD covariance
         u = randn(H, T_eff)
 
         r = SPIVResult(SPIVwithLP(), β, V, u; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
 
-        @test r isa SPIVResult{Float64, SPIVwithLP}
+        @test r isa SPIVResult{Float64,SPIVwithLP}
         @test r.β == β
         @test r.vcov == V
         @test r.residuals == u
         @test (r.H, r.K, r.Nz, r.Nx, r.T_eff) == (H, K, Nz, Nx, T_eff)
         @test r.weak_iv isa WeakIVDiagnostic{Float64}
         @test r.robust isa RobustInference{Float64}
-        @test r.irf_outcome isa IRFBlock{Float64, 2}
-        @test r.irf_endogenous isa IRFBlock{Float64, 3}
+        @test r.irf_outcome isa IRFBlock{Float64,2}
+        @test r.irf_endogenous isa IRFBlock{Float64,3}
         @test size(r.irf_outcome.point) == (H, Nz)
         @test size(r.irf_endogenous.point) == (H, K, Nz)
         @test all(isnan, r.irf_outcome.point)
         @test all(isnan, r.irf_endogenous.point)
 
         # Dispatch picks up the spec type parameter
-        r_var = SPIVResult(SPIVwithVAR(), β, V, u; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
-        @test r_var isa SPIVResult{Float64, SPIVwithVAR}
+        r_var = SPIVResult(
+            SPIVwithVAR(),
+            β,
+            V,
+            u;
+            H = H,
+            K = K,
+            Nz = Nz,
+            Nx = Nx,
+            T_eff = T_eff,
+        )
+        @test r_var isa SPIVResult{Float64,SPIVwithVAR}
 
         # Dimension validation
-        @test_throws DimensionMismatch SPIVResult(SPIVwithLP(), randn(K + 1), V, u;
-            H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
-        @test_throws DimensionMismatch SPIVResult(SPIVwithLP(), β, randn(K, K + 1), u;
-            H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
-        @test_throws DimensionMismatch SPIVResult(SPIVwithLP(), β, V, randn(H + 1, T_eff);
-            H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
+        @test_throws DimensionMismatch SPIVResult(
+            SPIVwithLP(),
+            randn(K + 1),
+            V,
+            u;
+            H = H,
+            K = K,
+            Nz = Nz,
+            Nx = Nx,
+            T_eff = T_eff,
+        )
+        @test_throws DimensionMismatch SPIVResult(
+            SPIVwithLP(),
+            β,
+            randn(K, K + 1),
+            u;
+            H = H,
+            K = K,
+            Nz = Nz,
+            Nx = Nx,
+            T_eff = T_eff,
+        )
+        @test_throws DimensionMismatch SPIVResult(
+            SPIVwithLP(),
+            β,
+            V,
+            randn(H + 1, T_eff);
+            H = H,
+            K = K,
+            Nz = Nz,
+            Nx = Nx,
+            T_eff = T_eff,
+        )
     end
 
     @testset "accessors return correct values" begin
         H, K, Nz, Nx, T_eff = 5, 2, 3, 4, 80
         β = randn(K)
-        V = let A = randn(K, K); A * A' end
+        V = let A = randn(K, K);
+            A * A'
+        end
         u = randn(H, T_eff)
         r = SPIVResult(SPIVwithLP(), β, V, u; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
 
@@ -137,7 +204,9 @@ using StatsBase
     @testset "accessor type stability" begin
         H, K, Nz, Nx, T_eff = 5, 2, 3, 4, 80
         β = randn(K)
-        V = let A = randn(K, K); A * A' end
+        V = let A = randn(K, K);
+            A * A'
+        end
         u = randn(H, T_eff)
         r = SPIVResult(SPIVwithLP(), β, V, u; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
 

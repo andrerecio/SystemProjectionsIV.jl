@@ -65,9 +65,16 @@ The weak-IV / robust-inference / IRF blocks are NaN stubs at this phase; `weak_i
 `ξ`, and `grid_length` are accepted to keep the public signature stable but are only
 consumed once Phases 3–4 populate those blocks.
 """
-function spiv(y::AbstractVector{<:Real}, Y::AbstractMatrix{<:Real},
-              X::AbstractMatrix{<:Real}, Z::AbstractMatrix{<:Real};
-              H::Int, weak_iv::Symbol = :AR, ξ::Real = 0.10, grid_length::Int = 30)
+function spiv(
+    y::AbstractVector{<:Real},
+    Y::AbstractMatrix{<:Real},
+    X::AbstractMatrix{<:Real},
+    Z::AbstractMatrix{<:Real};
+    H::Int,
+    weak_iv::Symbol = :AR,
+    ξ::Real = 0.10,
+    grid_length::Int = 30,
+)
     # --- promote to a common float type -----------------------------------
     yv = collect(Float64, y)
     Ym = Matrix{Float64}(Y)
@@ -81,14 +88,24 @@ function spiv(y::AbstractVector{<:Real}, Y::AbstractMatrix{<:Real},
 
     # --- validation -------------------------------------------------------
     H ≥ 1 || throw(ArgumentError("H must be ≥ 1, got $H"))
-    size(Ym, 1) == T || throw(DimensionMismatch("Y must have T = $T rows, got $(size(Ym, 1))"))
-    size(Xm, 1) == T || throw(DimensionMismatch("X must have T = $T rows, got $(size(Xm, 1))"))
-    size(Zm, 1) == T || throw(DimensionMismatch("Z must have T = $T rows, got $(size(Zm, 1))"))
+    size(Ym, 1) == T ||
+        throw(DimensionMismatch("Y must have T = $T rows, got $(size(Ym, 1))"))
+    size(Xm, 1) == T ||
+        throw(DimensionMismatch("X must have T = $T rows, got $(size(Xm, 1))"))
+    size(Zm, 1) == T ||
+        throw(DimensionMismatch("Z must have T = $T rows, got $(size(Zm, 1))"))
     T_eff = T - (H - 1)
     T_eff > 0 || throw(ArgumentError("horizon H = $H leaves no observations (T = $T)"))
-    H * Nz ≥ K || throw(ArgumentError("order condition violated: H·Nz = $(H*Nz) < K = $K (docs/technical.md §3.4)"))
-    T_eff - Nx - K > 0 ||
-        throw(ArgumentError("insufficient degrees of freedom: T_eff - Nx - K = $(T_eff - Nx - K) ≤ 0"))
+    H * Nz ≥ K || throw(
+        ArgumentError(
+            "order condition violated: H·Nz = $(H*Nz) < K = $K (docs/technical.md §3.4)",
+        ),
+    )
+    T_eff - Nx - K > 0 || throw(
+        ArgumentError(
+            "insufficient degrees of freedom: T_eff - Nx - K = $(T_eff - Nx - K) ≤ 0",
+        ),
+    )
 
     # --- stacked future paths, trimmed instruments/controls (§3.2) --------
     y_H = _stack_leads(reshape(yv, T, 1), H)   # H  × T_eff
@@ -133,5 +150,15 @@ function spiv(y::AbstractVector{<:Real}, Y::AbstractMatrix{<:Real},
     vβ = Ainv * M * Ainv
     vcov = Matrix(Symmetric(vβ ./ T_eff))      # K × K, symmetrized
 
-    return SPIVResult(SPIVwithLP(), β, vcov, û; H = H, K = K, Nz = Nz, Nx = Nx, T_eff = T_eff)
+    return SPIVResult(
+        SPIVwithLP(),
+        β,
+        vcov,
+        û;
+        H = H,
+        K = K,
+        Nz = Nz,
+        Nx = Nx,
+        T_eff = T_eff,
+    )
 end

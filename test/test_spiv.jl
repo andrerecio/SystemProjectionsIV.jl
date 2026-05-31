@@ -129,13 +129,37 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
     @testset "validation" begin
         T = 50
         # order condition H·Nz = 1 < K = 3
-        @test_throws ArgumentError spiv(randn(T), randn(T, 3), ones(T, 1), randn(T, 1); H = 1)
+        @test_throws ArgumentError spiv(
+            randn(T),
+            randn(T, 3),
+            ones(T, 1),
+            randn(T, 1);
+            H = 1,
+        )
         # row-count mismatch
-        @test_throws DimensionMismatch spiv(randn(T), randn(T - 1, 1), ones(T, 1), randn(T, 1); H = 2)
+        @test_throws DimensionMismatch spiv(
+            randn(T),
+            randn(T - 1, 1),
+            ones(T, 1),
+            randn(T, 1);
+            H = 2,
+        )
         # H too large for the sample
-        @test_throws ArgumentError spiv(randn(5), randn(5, 1), ones(5, 1), randn(5, 1); H = 6)
+        @test_throws ArgumentError spiv(
+            randn(5),
+            randn(5, 1),
+            ones(5, 1),
+            randn(5, 1);
+            H = 6,
+        )
         # insufficient degrees of freedom
-        @test_throws ArgumentError spiv(randn(4), randn(4, 1), ones(4, 3), randn(4, 1); H = 1)
+        @test_throws ArgumentError spiv(
+            randn(4),
+            randn(4, 1),
+            ones(4, 3),
+            randn(4, 1);
+            H = 1,
+        )
     end
 
     # -------------------------------------------------------------------
@@ -153,7 +177,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         Xv = ones(T, 1)
 
         res = @inferred _runspiv(yv, Yv, Xv, Zv, H)
-        @test res isa SPIVResult{Float64, SPIVwithLP}
+        @test res isa SPIVResult{Float64,SPIVwithLP}
 
         # Phase 2 fills β/vcov/residuals; inference & IRF blocks stay NaN stubs.
         wk = weak_iv_test(res)
