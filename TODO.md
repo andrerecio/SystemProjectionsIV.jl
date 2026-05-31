@@ -136,27 +136,41 @@ left to the user (like commits/pushes). Full Documenter doctest site deferred.
 
 ---
 
-## Phase 5b — VAR variant + utilities audit (deferred)
+## Phase 5b — VAR variant (forecast-error route) ✅
 
-Goal: the `SPIVwithVAR` variant. **Decision (recorded):** best-reading of Appendix A
-**with the VAR-IRF restriction**.
+Goal: the `SPIVwithVAR` variant. **Scope (confirmed):** route A — the forecast-error
+construction feeding the shared estimator/inference/IRF. The VAR-IRF restriction (route B)
+is deferred (see below).
 
-- [ ] `SPIVwithVAR` variant: fit a VAR(p) on the stacked vector `[Y_t; y_t; z_t]` (p a
-  kwarg; the VAR's own lags replace the LP control-residualization), build forecast errors
-  `X̂_t^⊥(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j}` (eq. A.3), select rows for `ŷ⊥/Ŷ⊥/Ẑ⊥`, and impose
-  VAR dynamics on the IRFs via `Θ̂^VAR = Â^h D̂` (the eq. 9 replacement, §4.2). Use an
-  internal VAR estimator reimplemented (and cited) from `docs/ext/gragusa/MacroEconometricsTools.jl`.
-  No R reference exists for this variant — validate against the LP variant on shared data.
-- [ ] Dispatch: `spiv(y, Y, X, Z, ::SPIVwithVAR; ...)` returns an `SPIVResult` with the
-  same shape as the LP variant; refactor steps 2–5 into a shared path so LP and VAR reuse
-  the estimator/inference/IRF code (only step 1 — forecast-error construction — differs).
-- [ ] Finish `src/utilities.jl`: `include` it and wire the retained lag/`create_lags`/
-  `companion_form` utilities into the VAR estimator.
-- [ ] Caveat (§4.2): the AR test is **not** robust when VAR dynamics are imposed on IRFs
-  (use the FE-only AR version); the KLM test is robust.
+Implemented in `src/var.jl`; `src/spiv.jl` refactored so step 1 (forecast errors) is
+dispatched on the spec and steps 2–5 are shared (`_forecast_errors` + `_spiv_estimate`).
+
+- [x] `SPIVwithVAR` variant: fit a VAR(p) by OLS on the stacked vector `[Y_t; y_t; z_t]` (p
+  a kwarg, default 1; the VAR's own lags replace the LP control-residualization, so the
+  controls `X` are ignored), build forecast errors `X̂_t^⊥(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j}`
+  (eq. A.3) via companion MA powers, and select rows for `ŷ⊥/Ŷ⊥/Ẑ⊥`. Reimplemented (cited)
+  from `docs/ext/gragusa/MacroEconometricsTools.jl`, reusing `src/utilities.jl`
+  (`create_lags`, `companion_form`). `T_eff = T − p − (H − 1)`; dof control count
+  `Nx_eff = 1 + m·p` (m = K+1+Nz).
+- [x] Dispatch: `spiv(y, Y, X, Z, SPIVwithVAR(); H, p, ...)` returns an
+  `SPIVResult{Float64, SPIVwithVAR}` with the same shape as the LP variant; the LP path is
+  unchanged (`spec` defaults to `SPIVwithLP()`).
+- [x] `src/utilities.jl` is now `include`d and consumed by the VAR estimator.
+- [x] Tests (`test/test_var.jl`): dispatch/shapes, β recovery on a VAR(1) DGP,
+  LP≈VAR comparability on shared data, row-selection ≡ VAR one-step residuals, populated
+  inference/IRF blocks, `@inferred`.
 
 **Exit criteria:** both `SPIVwithLP` and `SPIVwithVAR` produce comparable estimates on the
-same data (within sampling tolerance); tests pass; CI green.
+same data ✅; `Pkg.test()` green (203 pass) ✅.
+
+### Phase 5b' — VAR-IRF restriction (route B, deferred / experimental)
+
+Not implemented; under-specified in-repo and unverifiable. Would additionally:
+- replace the Gram matrices in eq. (9) with `Θ̂^VAR = Â^h D̂` outer products (§4.2) — needs
+  a chosen identification scheme `D̂` (Cholesky / external-IV; the docs give none);
+- apply the §7.3 VAR-restricted AR/KLM substitutions, with the **FE-only AR** (the AR test
+  is not robust under VAR-IRF restrictions; KLM is) and an undocumented Delta-method AR
+  variance.
 
 ---
 

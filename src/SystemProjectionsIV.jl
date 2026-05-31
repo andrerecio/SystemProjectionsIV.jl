@@ -8,8 +8,10 @@ using Printf: @printf, @sprintf
 using RecipesBase
 
 include("types.jl")
+include("utilities.jl")   # lag/create_lags/companion_form (gragusa-cited), used by var.jl
 include("inference.jl")
 include("irf.jl")
+include("var.jl")         # VAR-variant forecast errors (consumes utilities.jl)
 include("spiv.jl")
 include("show.jl")
 include("recipes.jl")
@@ -18,9 +20,5 @@ export AbstractSPIVSpec, SPIVwithLP, SPIVwithVAR
 export ForecastErrors, WeakIVDiagnostic, RobustInference, IRFBlock, SPIVResult
 export horizon, weak_iv_test, robust_inference, spec
 export spiv
-
-# src/utilities.jl holds lag/matrix/companion utilities adapted (and cited) from
-# gragusa MacroEconometricsTools.jl. It is intentionally not `include`d yet — no
-# code needs it until the Phase 5 VAR variant.
 
 end # module SystemProjectionsIV
