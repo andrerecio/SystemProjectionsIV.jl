@@ -71,9 +71,11 @@ function print_endogenous_irf(res)
     H, K, Nz = size(irf.point)
     println("  endogenous IRF (H × K × Nz = $H × $K × $Nz):  point (se)")
     for n in 1:Nz, k in 1:K
+
         println("   instrument $n → endogenous Y[$k]:")
         for h in 1:H
-            @printf("    h=%d  %8.4f  (se %.4f)\n", h - 1, irf.point[h, k, n], irf.se[h, k, n])
+            @printf("    h=%d  %8.4f  (se %.4f)\n", h - 1, irf.point[h, k, n],
+                irf.se[h, k, n])
         end
     end
 end
@@ -146,7 +148,9 @@ println(" Strong-instrument design (instrument_loading = 1.0):")
 print_weak_iv(res_lp)
 
 println("\n Weak-instrument design (instrument_loading = 0.02):")
-yw, Yw, Xw, Zw = make_dgp(; T = T, H = H, β_true = β_true, a = a, ρ = ρ,
+yw, Yw,
+Xw,
+Zw = make_dgp(; T = T, H = H, β_true = β_true, a = a, ρ = ρ,
     instrument_loading = 0.02, seed = 11)
 res_weak = spiv(yw, Yw, Xw, Zw; H = H)
 print_weak_iv(res_weak)

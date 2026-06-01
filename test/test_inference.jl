@@ -4,12 +4,12 @@
 using Test
 using SystemProjectionsIV
 using SystemProjectionsIV:
-    _stack_leads,
-    _restriction_matrix,
-    _first_stage_resid_cov,
-    _weak_iv_diagnostic,
-    _ar_stat,
-    _klm_stat
+                           _stack_leads,
+                           _restriction_matrix,
+                           _first_stage_resid_cov,
+                           _weak_iv_diagnostic,
+                           _ar_stat,
+                           _klm_stat
 using StatsBase: coef
 using LinearAlgebra: I, Symmetric, tr
 using Statistics: mean
