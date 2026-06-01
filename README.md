@@ -49,6 +49,23 @@ result.irf_outcome.point            # outcome IRF point estimates (H × Nz)
 
 `spiv` returns an `SPIVResult` carrying the structural estimate β̂, its sandwich covariance under strong identification, residuals, weak-IV diagnostics, robust (AR or KLM) confidence sets, and the implied IRFs with HAC standard errors. Pass `hac = :neweywest` (or `:andrews`) for automatic-bandwidth Newey–West IRF standard errors instead of the default fixed lag truncation. With `Plots` loaded, `plot(result)` draws the outcome IRF bands (`plot(result; response = :endogenous)` for the endogenous IRFs).
 
+## Examples
+
+Runnable scripts live under `examples/`:
+
+- `examples/demo.jl` — a text-only walkthrough of the whole API (LP and VAR variants, weak-IV diagnostic, AR/KLM robust sets, IRFs, an overidentified case). Run it in the package environment:
+
+  ```bash
+  julia --project examples/demo.jl
+  ```
+
+- `examples/plots.jl` — renders the IRF figures via the `Plots` recipe. The package itself depends only on `RecipesBase`, so `Plots` is kept out of its dependencies and lives in a separate `examples/` environment instead:
+
+  ```bash
+  julia -e 'using Pkg; Pkg.activate("examples"); Pkg.develop(path="."); Pkg.add("Plots")'
+  julia --project=examples examples/plots.jl
+  ```
+
 ## What it estimates
 
 The structural equation
