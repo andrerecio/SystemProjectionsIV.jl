@@ -1,5 +1,7 @@
 # SystemProjectionsIV.jl
 
+[![CI](https://github.com/andrerecio/SystemProjectionsIV.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/andrerecio/SystemProjectionsIV.jl/actions/workflows/CI.yml)
+[![Docs](https://github.com/andrerecio/SystemProjectionsIV.jl/actions/workflows/Documentation.yml/badge.svg)](https://github.com/andrerecio/SystemProjectionsIV.jl/actions/workflows/Documentation.yml)
 [![docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://andrerecio.github.io/SystemProjectionsIV.jl/)
 [![codecov](https://codecov.io/gh/andrerecio/SystemProjectionsIV.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/andrerecio/SystemProjectionsIV.jl)
 [![Aqua QA](https://juliatesting.github.io/Aqua.jl/dev/assets/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
