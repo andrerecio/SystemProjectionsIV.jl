@@ -69,7 +69,8 @@ function _irf_blocks(
     # Outcome block: row h is horizon h-1 ⇒ HAC bandwidth h (lag truncation h-1).
     se_y = similar(Θy)
     for h in 1:H
-        se_y[h, :] .= _irf_row_se(X, vec(y_perp[h, :]), Θy[h, :], XtXinv, h, hac)
+        se_y[h, :] .= _irf_row_se(
+            X, (@view y_perp[h, :]), (@view Θy[h, :]), XtXinv, h, hac)
     end
     outcome = IRFBlock(Θy, se_y, Θy .- z .* se_y, Θy .+ z .* se_y)
 
@@ -79,9 +80,9 @@ function _irf_blocks(
     for k in 1:K, h in 1:H
 
         r = (k - 1) * H + h
-        b = ΘY[r, :]
+        b = @view ΘY[r, :]
         pt[h, k, :] .= b
-        se[h, k, :] .= _irf_row_se(X, vec(Y_perp[r, :]), b, XtXinv, h, hac)
+        se[h, k, :] .= _irf_row_se(X, (@view Y_perp[r, :]), b, XtXinv, h, hac)
     end
     endogenous = IRFBlock(pt, se, pt .- z .* se, pt .+ z .* se)
 

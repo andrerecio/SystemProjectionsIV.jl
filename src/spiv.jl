@@ -76,7 +76,7 @@ function _forecast_errors(
     Xc = Xm[1:T_eff, :]                        # T_eff × Nx
 
     # Thin QR factor of the controls; Q's columns are an orthonormal basis for X.
-    Q = Nx == 0 ? Matrix{Float64}(undef, T_eff, 0) : Matrix(qr(Xc).Q)[:, 1:Nx]
+    Q = Nx == 0 ? Matrix{Float64}(undef, T_eff, 0) : Matrix(qr(Xc).Q)
     y_perp = _residualize_on(y_H, Q)           # H  × T_eff
     Y_perp = _residualize_on(Y_H, Q)           # HK × T_eff
     Z_perp = _residualize_on(Zc, Q)            # Nz × T_eff

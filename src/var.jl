@@ -63,12 +63,14 @@ function _var_forecast_errors(
     Y_perp = Matrix{Float64}(undef, H * K, T_eff)
     Z_perp = Matrix{Float64}(undef, Nz, T_eff)
     xh = Vector{Float64}(undef, m)
+    tmp = Vector{Float64}(undef, m)
     for c in 1:T_eff
         Z_perp[:, c] .= @view ê[c, z_idx]       # h = 0 ⇒ X̂⊥(c,0) = ê_c
         for h in 0:(H - 1)
             fill!(xh, 0.0)
             for j in 0:h
-                xh .+= Φ[h - j + 1] * (@view ê[c + j, :])
+                mul!(tmp, Φ[h - j + 1], @view ê[c + j, :])
+                xh .+= tmp
             end
             y_perp[h + 1, c] = xh[y_idx]
             for k in 1:K

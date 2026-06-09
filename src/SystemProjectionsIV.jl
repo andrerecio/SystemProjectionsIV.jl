@@ -1,6 +1,6 @@
 module SystemProjectionsIV
 
-using LinearAlgebra: diag, qr, Symmetric, I, inv, kron, tr, eigvals, dot
+using LinearAlgebra: diag, qr, Symmetric, I, inv, kron, tr, eigvals, dot, mul!
 using StatsBase
 using StatsFuns: norminvcdf, chisqinvcdf
 using CovarianceMatrices: aVar, Bartlett, NeweyWest, Andrews

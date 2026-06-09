@@ -67,8 +67,9 @@ function _weak_iv_diagnostic(
     W2_sqrt = sqrt(Symmetric(W2))                      # Ŵ₂¹ᐟ²
     S = kron(Φ_isqrt, IH) * W2_sqrt                    # KH × HK
     Scal = S * S'                                       # Σ̂ = SS', KH × KH
-    m2 = maximum(eigvals(Symmetric(R' * kron(Scal^2, IH) * R)))
-    m3 = maximum(eigvals(Symmetric(R' * kron(Scal^3, IH) * R)))
+    Scal2 = Scal * Scal                                 # Σ̂², reused for Σ̂³
+    m2 = maximum(eigvals(Symmetric(R' * kron(Scal2, IH) * R)))
+    m3 = maximum(eigvals(Symmetric(R' * kron(Scal2 * Scal, IH) * R)))
 
     κ1 = Nz * (1 + ℓ)
     κ2 = 2 * (Nz * m2 + 2 * ℓ * Nz)
