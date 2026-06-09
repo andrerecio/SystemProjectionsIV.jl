@@ -6,20 +6,61 @@
 # of SP-IV (technical.md, appendix A).
 # ---------------------------------------------------------------------------
 
+"""
+    AbstractSPIVSpec
+
+Abstract supertype tagging which variant of the SP-IV estimator to run. The
+first step of [`spiv`](@ref) — constructing the residualised forecast errors —
+is dispatched on this type; the remaining estimation, inference, and IRF steps
+are shared. Concrete subtypes: [`SPIVwithLP`](@ref) and [`SPIVwithVAR`](@ref).
+"""
 abstract type AbstractSPIVSpec end
 
+"""
+    SPIVwithLP() <: AbstractSPIVSpec
+
+Local-projections variant of SP-IV. Forecast errors are built by projecting the
+leads `y_{t+h}` and `Y_{t+h}` on the instruments `z_t` and lagged controls
+`X_{t-1}` via direct local projections (technical.md §3, eq. A.1). This is the
+default spec for [`spiv`](@ref).
+"""
 struct SPIVwithLP <: AbstractSPIVSpec end
 
+"""
+    SPIVwithVAR() <: AbstractSPIVSpec
+
+VAR variant of SP-IV (forecast-error route). A VAR(`p`) is fit by OLS on the
+stacked vector `[Y_t; y_t; z_t]` and the `h`-step forecast errors are formed
+from its companion MA representation (technical.md §4.2, eqs. A.2–A.3). The
+VAR's own lags replace the LP control-residualisation, so the controls `X`
+passed to [`spiv`](@ref) are ignored. Select the lag order with the `p` keyword.
+"""
 struct SPIVwithVAR <: AbstractSPIVSpec end
 
 # ---------------------------------------------------------------------------
 # ForecastErrors: residualised stacked matrices used by the estimator.
-# Dimensions follow docs/technical.md §3:
-#   y_perp :: H × T_eff
-#   Y_perp :: (H·K) × T_eff
-#   Z_perp :: Nz × T_eff
 # ---------------------------------------------------------------------------
 
+"""
+    ForecastErrors{T}
+
+Residualised, stacked forecast errors that feed the shared SP-IV estimator
+(technical.md §3). Built internally by the variant-specific first step; rarely
+constructed by hand. Time runs along the columns.
+
+# Fields
+- `y_perp::Matrix{T}`: outcome forecast errors, `H × T_eff`.
+- `Y_perp::Matrix{T}`: endogenous-regressor forecast errors, `(H·K) × T_eff`.
+- `Z_perp::Matrix{T}`: instrument forecast errors, `Nz × T_eff`.
+- `H::Int`: number of leads (horizons).
+- `K::Int`: number of endogenous regressors.
+- `Nz::Int`: number of instruments.
+
+    ForecastErrors(y_perp, Y_perp, Z_perp; H, K, Nz)
+
+Validate the row dimensions (`H`, `H·K`, `Nz`) and a common column count
+(`T_eff`), then store dense copies.
+"""
 struct ForecastErrors{T <: AbstractFloat}
     y_perp::Matrix{T}
     Y_perp::Matrix{T}
@@ -57,6 +98,20 @@ end
 # WeakIVDiagnostic: result of the first-stage weak-IV test (Proposition 7).
 # ---------------------------------------------------------------------------
 
+"""
+    WeakIVDiagnostic{T}
+
+Outcome of the first-stage weak-instrument test (technical.md §6, Proposition 7
+and Theorem 1). Retrieve it from a result with [`weak_iv_test`](@ref).
+
+# Fields
+- `g_min::T`: the minimum `g` statistic; reduces to the first-stage `F` in the
+  just-identified scalar case.
+- `critical_value::T`: the (moment-matched, conservative) critical value it is
+  compared against.
+- `is_weak::Bool`: `true` when `g_min` falls below `critical_value`, flagging
+  weak instruments.
+"""
 struct WeakIVDiagnostic{T <: AbstractFloat}
     g_min::T
     critical_value::T
@@ -69,10 +124,24 @@ end
 
 # ---------------------------------------------------------------------------
 # RobustInference: AR / KLM robust confidence set output (eqs. 20–21).
-# `confidence_set` stores only the accepted grid points (rows = points, cols = parameters).
-# `bounds` stores per-parameter (lower, upper) extracted as min/max over the set.
 # ---------------------------------------------------------------------------
 
+"""
+    RobustInference{T}
+
+Weak-identification-robust confidence set, obtained by inverting the
+Anderson–Rubin (eq. 20) or Kleibergen KLM (eq. 21) statistic over a grid
+(technical.md §7). Retrieve it from a result with [`robust_inference`](@ref).
+
+# Fields
+- `method::Symbol`: `:AR`, `:KLM`, or `:none` (the unpopulated stub).
+- `critical_value::T`: the chi-squared critical value used to accept grid points.
+- `bounds::Matrix{T}`: `K × 2` per-parameter `(lower, upper)`, the min/max over
+  the accepted set.
+- `confidence_set::Matrix{T}`: the accepted grid points, `N_accepted × K`
+  (rows = points, columns = parameters).
+- `degrees_freedom::Int`: degrees of freedom of the reference distribution.
+"""
 struct RobustInference{T <: AbstractFloat}
     method::Symbol            # :AR or :KLM (or :none for the Phase 1 stub)
     critical_value::T
@@ -89,11 +158,25 @@ end
 
 # ---------------------------------------------------------------------------
 # IRFBlock: point estimate, SE, and confidence band for an IRF.
-# Parameterised on dimensionality N:
-#   N = 2 for the outcome IRF (H × Nz)
-#   N = 3 for the endogenous IRF (H × K × Nz)
 # ---------------------------------------------------------------------------
 
+"""
+    IRFBlock{T, N}
+
+A block of impulse responses with HAC standard errors and confidence bands
+(technical.md §3.3). Parameterised on dimensionality `N`:
+
+- `N = 2` for the outcome IRF, shape `H × Nz`;
+- `N = 3` for the endogenous IRF, shape `H × K × Nz`.
+
+# Fields
+- `point::Array{T, N}`: point estimates.
+- `se::Array{T, N}`: Newey–West HAC standard errors.
+- `lower::Array{T, N}`, `upper::Array{T, N}`: confidence-band endpoints.
+
+All four arrays share the same shape. Access these on an [`SPIVResult`](@ref) via
+`result.irf_outcome` and `result.irf_endogenous`.
+"""
 struct IRFBlock{T <: AbstractFloat, N}
     point::Array{T, N}
     se::Array{T, N}
@@ -129,10 +212,29 @@ end
 
 # ---------------------------------------------------------------------------
 # SPIVResult: the bundle returned by spiv().
-# Concrete fields throughout — no Union{T, Nothing}. Phase 2 fills β/vcov/residuals;
-# Phase 3 fills weak_iv/robust; Phase 4 fills the IRF blocks. Until then, NaN.
+# Concrete fields throughout — no Union{T, Nothing}.
 # ---------------------------------------------------------------------------
 
+"""
+    SPIVResult{T, S}
+
+The bundle returned by [`spiv`](@ref). All fields are concrete (no
+`Union{T, Nothing}`). It supports the StatsBase accessors `coef`, `vcov`,
+`stderror`, `confint`, `nobs`, `dof_residual`, and `residuals`.
+
+# Fields
+- `spec::S`: the variant tag ([`SPIVwithLP`](@ref) or [`SPIVwithVAR`](@ref)).
+- `β::Vector{T}`: structural estimate β̂, length `K` (eq. 9).
+- `vcov::Matrix{T}`: `K × K` sandwich covariance under strong identification
+  (eqs. 18–19).
+- `residuals::Matrix{T}`: structural residuals `u_H^⊥`, shape `H × T_eff`.
+- `weak_iv::WeakIVDiagnostic{T}`: first-stage weak-IV diagnostic.
+- `robust::RobustInference{T}`: AR/KLM robust confidence set.
+- `irf_outcome::IRFBlock{T, 2}`: outcome IRF, `H × Nz`.
+- `irf_endogenous::IRFBlock{T, 3}`: endogenous IRF, `H × K × Nz`.
+- `H, K, Nz, Nx, T_eff::Int`: leads, endogenous regressors, instruments,
+  controls, and effective sample size.
+"""
 struct SPIVResult{T <: AbstractFloat, S <: AbstractSPIVSpec}
     spec::S
     β::Vector{T}
@@ -202,7 +304,32 @@ function StatsBase.confint(r::SPIVResult; level::Real = 0.95)
     return hcat(r.β .- z .* se, r.β .+ z .* se)
 end
 
+"""
+    horizon(r::SPIVResult) -> Int
+
+Number of leads (horizons) `H` used in the estimation.
+"""
 horizon(r::SPIVResult) = r.H
+
+"""
+    weak_iv_test(r::SPIVResult) -> WeakIVDiagnostic
+
+The first-stage weak-instrument diagnostic. See [`WeakIVDiagnostic`](@ref).
+"""
 weak_iv_test(r::SPIVResult) = r.weak_iv
+
+"""
+    robust_inference(r::SPIVResult) -> RobustInference
+
+The weak-identification-robust (AR/KLM) confidence set. See
+[`RobustInference`](@ref).
+"""
 robust_inference(r::SPIVResult) = r.robust
+
+"""
+    spec(r::SPIVResult) -> AbstractSPIVSpec
+
+The variant tag the result was produced with ([`SPIVwithLP`](@ref) or
+[`SPIVwithVAR`](@ref)).
+"""
 spec(r::SPIVResult) = r.spec

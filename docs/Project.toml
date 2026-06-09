@@ -1,0 +1,8 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+SystemProjectionsIV = "25f786b6-7bab-4ac2-a587-eaae00a29f14"
+
+[compat]
+Documenter = "1"
