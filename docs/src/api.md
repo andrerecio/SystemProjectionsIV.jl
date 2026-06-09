@@ -43,6 +43,17 @@ robust_inference
 spec
 ```
 
+## Data helpers
+
+Utilities for building lagged-control matrices for the `X` keyword of
+[`spiv`](@ref). Both pad unavailable initial observations with `NaN` — trim the
+burn-in rows from all inputs before estimating.
+
+```@docs
+lag
+lags
+```
+
 ## Index
 
 ```@index

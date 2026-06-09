@@ -57,8 +57,9 @@ Y .+= 0.7 .* u .+ 0.2 .* randn(T)     # endogeneity
 
 y = β .* Y .+ u
 
-# y (T,), Y (T,K), X (T,Nx) controls, Z (T,Nz) instruments, H leads.
-result = spiv(y, reshape(Y, T, 1), ones(T, 1), reshape(ε, T, 1); H = H, weak_iv = :AR)
+# y outcome, Y endogenous regressor(s), ε instrument(s); vectors or matrices
+# both work, and an intercept is included by default.
+result = spiv(y, Y, ε; H = H, weak_iv = :AR)
 ```
 
 The returned [`SPIVResult`](@ref) carries the structural estimate, its sandwich

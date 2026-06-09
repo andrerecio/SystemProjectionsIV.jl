@@ -90,7 +90,7 @@ end
         z = 0.7 .* vec(Yv) .+ randn(T)
         yv = 0.5 .* vec(Yv) .+ randn(T)
 
-        res = spiv(yv, Yv, ones(T, 1), reshape(z, T, 1); H = H)
+        res = spiv(yv, Yv, z; H = H)
 
         y_H, Y_H, Z_p, Czz, T_eff = _residualized(yv, Yv, reshape(z, T, 1), H)
         v_res, _ = _first_stage_resid_cov(Y_H, Z_p, Czz, T_eff, 1, 1)
@@ -157,7 +157,7 @@ end
     # -------------------------------------------------------------------
     @testset "populated result" begin
         yv, Yv, Zv = _dgp(400, 4, 0.7, 20240530)
-        res = spiv(yv, Yv, ones(400, 1), Zv; H = 4)
+        res = spiv(yv, Yv, Zv; H = 4)
 
         wk = weak_iv_test(res)
         @test isfinite(wk.g_min) && wk.g_min ≥ 0
@@ -171,7 +171,7 @@ end
         @test rb.bounds[1, 1] ≤ coef(res)[1] ≤ rb.bounds[1, 2]
 
         # KLM path on the same data.
-        res_klm = spiv(yv, Yv, ones(400, 1), Zv; H = 4, weak_iv = :KLM)
+        res_klm = spiv(yv, Yv, Zv; H = 4, weak_iv = :KLM)
         rbk = robust_inference(res_klm)
         @test rbk.method == :KLM
         @test rbk.degrees_freedom == 1                   # K

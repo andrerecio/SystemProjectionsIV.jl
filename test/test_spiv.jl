@@ -13,7 +13,7 @@ using Random
 _demean(M) = M .- mean(M, dims = 2)
 
 # Top-level (non-closure) wrapper so @inferred sees a plain generic function.
-_runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
+_runspiv(y, Y, Z, h) = spiv(y, Y, Z; H = h)
 
 @testset "spiv (LP variant)" begin
 
@@ -43,7 +43,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         end
         yv = β_true .* Yv .+ u
 
-        res = spiv(yv, reshape(Yv, T, 1), ones(T, 1), reshape(ε, T, 1); H = H)
+        res = spiv(yv, Yv, ε; H = H)
 
         @test coef(res)[1] ≈ β_true atol = 0.05
         @test size(residuals(res)) == (H, T - (H - 1))
@@ -66,7 +66,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         Zv = randn(T, Nz)
         yv = randn(T)
 
-        res = spiv(yv, Yv, ones(T, 1), Zv; H = H)
+        res = spiv(yv, Yv, Zv; H = H)
 
         # Independent eq. (13) path on the same demeaned, lead-stacked data.
         y_H = _demean(SystemProjectionsIV._stack_leads(reshape(yv, T, 1), H))  # H × T_eff
@@ -108,7 +108,7 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         z = 0.8 .* Yv .+ randn(T)        # relevant instrument
         yv = 0.5 .* Yv .+ randn(T)
 
-        res = spiv(yv, reshape(Yv, T, 1), ones(T, 1), reshape(z, T, 1); H = 1)
+        res = spiv(yv, Yv, z; H = 1)
 
         yd = yv .- mean(yv)
         Yd = Yv .- mean(Yv)
@@ -130,37 +130,17 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
     @testset "validation" begin
         T = 50
         # order condition H·Nz = 1 < K = 3
-        @test_throws ArgumentError spiv(
-            randn(T),
-            randn(T, 3),
-            ones(T, 1),
-            randn(T, 1);
-            H = 1
-        )
+        @test_throws ArgumentError spiv(randn(T), randn(T, 3), randn(T, 1); H = 1)
         # row-count mismatch
-        @test_throws DimensionMismatch spiv(
-            randn(T),
-            randn(T - 1, 1),
-            ones(T, 1),
-            randn(T, 1);
-            H = 2
-        )
+        @test_throws DimensionMismatch spiv(randn(T), randn(T - 1, 1), randn(T, 1); H = 2)
         # H too large for the sample
+        @test_throws ArgumentError spiv(randn(5), randn(5, 1), randn(5, 1); H = 6)
+        # insufficient degrees of freedom (intercept + 2 controls ⇒ Nx = 3)
         @test_throws ArgumentError spiv(
-            randn(5),
-            randn(5, 1),
-            ones(5, 1),
-            randn(5, 1);
-            H = 6
-        )
-        # insufficient degrees of freedom
+            randn(4), randn(4, 1), randn(4, 1); H = 1, X = randn(4, 2))
+        # NaN inputs (e.g. untrimmed lags) are rejected with a helpful message
         @test_throws ArgumentError spiv(
-            randn(4),
-            randn(4, 1),
-            ones(4, 3),
-            randn(4, 1);
-            H = 1
-        )
+            randn(T), randn(T, 1), randn(T, 1); H = 2, X = lags(randn(T), 2))
     end
 
     # -------------------------------------------------------------------
@@ -175,9 +155,8 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         yv = randn(T)
         Yv = randn(T, K)
         Zv = randn(T, Nz)
-        Xv = ones(T, 1)
 
-        res = @inferred _runspiv(yv, Yv, Xv, Zv, H)
+        res = @inferred _runspiv(yv, Yv, Zv, H)
         @test res isa SPIVResult{Float64, SPIVwithLP}
 
         # Phases 3–4 fill the weak-IV / robust / IRF blocks.
@@ -188,5 +167,78 @@ _runspiv(y, Y, X, Z, h) = spiv(y, Y, X, Z; H = h)
         @test all(isfinite, res.irf_endogenous.point)
         @test nobs(res) == T - (H - 1)
         @test spec(res) === SPIVwithLP()
+    end
+
+    # -------------------------------------------------------------------
+    # 6. Input ergonomics: vector promotion, the intercept default, and the
+    #    X keyword are exact re-parameterizations of the matrix interface.
+    # -------------------------------------------------------------------
+    @testset "input ergonomics" begin
+        Random.seed!(42)
+        T = 200
+        H = 3
+        yv = randn(T)
+        Yv = randn(T)
+        z = randn(T)
+        W = randn(T, 2)                   # extra controls
+
+        # Vectors and one-column matrices are interchangeable (bit-identical).
+        r_vec = spiv(yv, Yv, z; H = H)
+        r_mat = spiv(yv, reshape(Yv, T, 1), reshape(z, T, 1); H = H)
+        @test coef(r_vec) == coef(r_mat)
+        @test vcov(r_vec) == vcov(r_mat)
+
+        # Default intercept ≡ passing the constant column explicitly.
+        r_explicit = spiv(yv, Yv, z; H = H, intercept = false, X = ones(T, 1))
+        @test coef(r_vec) == coef(r_explicit)
+        @test vcov(r_vec) == vcov(r_explicit)
+        @test r_vec.Nx == 1
+
+        # X is appended after the intercept; Nx counts both.
+        r_ctrl = spiv(yv, Yv, z; H = H, X = W)
+        @test r_ctrl.Nx == 3
+        r_ctrl2 = spiv(yv, Yv, z; H = H, intercept = false, X = hcat(ones(T), W))
+        @test coef(r_ctrl) == coef(r_ctrl2)
+
+        # intercept = false with no X gives the no-controls path.
+        r_none = spiv(yv, Yv, z; H = H, intercept = false)
+        @test r_none.Nx == 0
+        @test isfinite(coef(r_none)[1])
+    end
+
+    # -------------------------------------------------------------------
+    # 7. lag / lags data helpers (exported for building the X controls).
+    # -------------------------------------------------------------------
+    @testset "lag / lags helpers" begin
+        x = [1.0, 2.0, 3.0, 4.0, 5.0]
+        @test isequal(lag(x, 1), [NaN, 1.0, 2.0, 3.0, 4.0])
+        @test lag(x, 0) == x
+        @test isequal(lag(x, -1), [2.0, 3.0, 4.0, 5.0, NaN])
+
+        L = lags(x, 2)
+        @test size(L) == (5, 2)
+        @test isequal(L[:, 1], lag(x, 1))
+        @test isequal(L[:, 2], lag(x, 2))
+        @test all(isfinite, L[3:end, :])
+
+        # Matrix input: lag-major column order [lag(X,1) lag(X,2) ...].
+        M = [1.0 10.0; 2.0 20.0; 3.0 30.0; 4.0 40.0]
+        LM = lags(M, 2)
+        @test size(LM) == (4, 4)
+        @test isequal(LM[:, 1:2], lag(M, 1))
+        @test isequal(LM[:, 3:4], lag(M, 2))
+
+        @test_throws ArgumentError lags(x, 0)
+
+        # Round-trip into spiv with trimmed burn-in rows.
+        Random.seed!(8)
+        T = 300
+        yv = randn(T)
+        Yv = randn(T)
+        z = randn(T)
+        p = 2
+        keep = (p + 1):T
+        r = spiv(yv[keep], Yv[keep], z[keep]; H = 2, X = lags(yv, p)[keep, :])
+        @test r.Nx == 1 + p
     end
 end

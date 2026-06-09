@@ -197,26 +197,37 @@ end
 # Public entry point
 # ---------------------------------------------------------------------------
 
+# Promote a vector to a one-column Float64 matrix; copy matrices to Matrix{Float64}.
+_as_matrix(A::AbstractVector{<:Real}) = Matrix{Float64}(reshape(A, :, 1))
+_as_matrix(A::AbstractMatrix{<:Real}) = Matrix{Float64}(A)
+
 """
-    spiv(y, Y, X, Z, spec = SPIVwithLP(); H, p = 1, weak_iv = :AR, α = 0.05,
-         ξ = 0.10, grid_length = 30, grid_scale = 10, hac = :fixed)
+    spiv(y, Y, Z, spec = SPIVwithLP(); H, X = nothing, intercept = true, p = 1,
+         weak_iv = :AR, α = 0.05, ξ = 0.10, grid_length = 30, grid_scale = 10,
+         hac = :fixed)
 
 System Projections IV estimator (Lewis & Mertens 2024).
 
-Inputs use the **time-in-rows** convention (`T` periods down the rows):
+Inputs use the **time-in-rows** convention (`T` periods down the rows); single
+series can be passed as plain vectors:
 
 - `y` — outcome, length-`T` vector.
-- `Y` — `T × K` endogenous regressors.
-- `X` — `T × Nx` controls (e.g. lagged variables); residualized out via FWL.
-- `Z` — `T × Nz` instruments.
+- `Y` — endogenous regressors, `T × K` matrix (or a length-`T` vector when `K = 1`).
+- `Z` — instruments, `T × Nz` matrix (or a length-`T` vector when `Nz = 1`).
+
+```julia
+spiv(y, Y, z; H = 8)                       # intercept-only controls (the default)
+spiv(y, Y, z; H = 8, X = lags(w, 4)[5:end, :])  # intercept + lagged controls
+spiv(y, Y, z; H = 8, intercept = false)    # no controls at all
+```
 
 `spec` selects the forecast-error construction:
 
 - `SPIVwithLP()` (default) — Jordà local projections of `y_{t+h}, Y_{t+h}` on `z_t` and
-  the controls `X_{t-1}` (eq. A.1).
+  the controls (eq. A.1).
 - `SPIVwithVAR()` — a VAR(`p`) on `[Y_t, y_t, z_t]`; forecast errors are built from the
-  reduced-form residuals (eqs. A.2–A.3) and the controls `X` are **ignored** (the VAR's
-  own lags play that role). `T_eff = T − p − (H − 1)`.
+  reduced-form residuals (eqs. A.2–A.3) and the controls (`X`, `intercept`) are
+  **ignored** (the VAR's own lags play that role). `T_eff = T − p − (H − 1)`.
 
 `H` is the projection horizon (number of leads, `h = 0,…,H-1`). Returns an
 `SPIVResult{Float64, typeof(spec)}` with the point estimate `β̂` (eq. 9), the
@@ -225,6 +236,11 @@ weak-IV diagnostic (Proposition 7), and a robust confidence set.
 
 Keyword arguments:
 
+- `X` — additional controls to residualise on (e.g. lagged variables, `X_{t-1}`),
+  a `T × Nx` matrix or a length-`T` vector; default none. Build lagged controls
+  with [`lag`](@ref) / [`lags`](@ref) — they pad initial rows with `NaN`, so trim
+  the burn-in rows from **all** inputs before calling `spiv`.
+- `intercept` — prepend a constant column to the controls (default `true`).
 - `p` — VAR lag order for the `SPIVwithVAR` variant (default 1; ignored for LP).
 - `weak_iv` — robust test to invert for the confidence set, `:AR` (default) or `:KLM`.
 - `α` — significance level for the weak-IV and robust critical values (default 0.05).
@@ -242,11 +258,12 @@ HAC standard errors and `1 − α` normal bands, are in `result.irf_outcome` /
 """
 function spiv(
         y::AbstractVector{<:Real},
-        Y::AbstractMatrix{<:Real},
-        X::AbstractMatrix{<:Real},
-        Z::AbstractMatrix{<:Real},
+        Y::AbstractVecOrMat{<:Real},
+        Z::AbstractVecOrMat{<:Real},
         spec::AbstractSPIVSpec = SPIVwithLP();
         H::Int,
+        X::Union{Nothing, AbstractVecOrMat{<:Real}} = nothing,
+        intercept::Bool = true,
         p::Int = 1,
         weak_iv::Symbol = :AR,
         α::Real = 0.05,
@@ -257,13 +274,18 @@ function spiv(
 )
     # --- promote to a common float type -----------------------------------
     yv = collect(Float64, y)
-    Ym = Matrix{Float64}(Y)
-    Xm = Matrix{Float64}(X)
-    Zm = Matrix{Float64}(Z)
+    Ym = _as_matrix(Y)
+    Zm = _as_matrix(Z)
 
     T = length(yv)
     K = size(Ym, 2)
     Nz = size(Zm, 2)
+
+    # --- assemble the controls matrix: [intercept | X] --------------------
+    Xuser = X === nothing ? Matrix{Float64}(undef, T, 0) : _as_matrix(X)
+    size(Xuser, 1) == T ||
+        throw(DimensionMismatch("X must have T = $T rows, got $(size(Xuser, 1))"))
+    Xm = intercept ? hcat(ones(T), Xuser) : Xuser
 
     # --- common validation ------------------------------------------------
     H ≥ 1 || throw(ArgumentError("H must be ≥ 1, got $H"))
@@ -272,10 +294,16 @@ function spiv(
         throw(ArgumentError("hac must be :fixed, :neweywest, or :andrews, got :$hac"))
     size(Ym, 1) == T ||
         throw(DimensionMismatch("Y must have T = $T rows, got $(size(Ym, 1))"))
-    size(Xm, 1) == T ||
-        throw(DimensionMismatch("X must have T = $T rows, got $(size(Xm, 1))"))
     size(Zm, 1) == T ||
         throw(DimensionMismatch("Z must have T = $T rows, got $(size(Zm, 1))"))
+    for (name, arr) in (("y", yv), ("Y", Ym), ("X", Xm), ("Z", Zm))
+        all(isfinite, arr) || throw(
+            ArgumentError(
+            "$name contains non-finite values (NaN/Inf). lag/lags pad initial rows " *
+            "with NaN — trim the burn-in rows from all inputs before calling spiv, " *
+            "e.g. y[(p+1):end] and X = lags(x, p)[(p+1):end, :]."),
+        )
+    end
 
     # --- step 1 (dispatched) then shared steps 2–5 ------------------------
     y_perp, Y_perp, Z_perp, T_eff, Nx_eff = _forecast_errors(spec, yv, Ym, Xm, Zm, H, p)

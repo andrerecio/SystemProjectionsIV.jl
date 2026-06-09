@@ -21,7 +21,7 @@ function _dgp_var(T, β, seed)
 end
 
 # Top-level wrapper so @inferred sees a plain generic function.
-_runvar(y, Y, X, Z, h, p) = spiv(y, Y, X, Z, SPIVwithVAR(); H = h, p = p)
+_runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
 
 @testset "spiv (VAR variant)" begin
 
@@ -31,7 +31,7 @@ _runvar(y, Y, X, Z, h, p) = spiv(y, Y, X, Z, SPIVwithVAR(); H = h, p = p)
     @testset "dispatch and shapes" begin
         T, β, H, p = 800, 0.5, 4, 1
         y, Y, Z = _dgp_var(T, β, 1)
-        res = spiv(y, Y, ones(T, 1), Z, SPIVwithVAR(); H = H, p = p)
+        res = spiv(y, Y, Z, SPIVwithVAR(); H = H, p = p)
 
         @test res isa SPIVResult{Float64, SPIVwithVAR}
         @test spec(res) === SPIVwithVAR()
@@ -49,15 +49,14 @@ _runvar(y, Y, X, Z, h, p) = spiv(y, Y, X, Z, SPIVwithVAR(); H = h, p = p)
     @testset "β recovery and LP≈VAR" begin
         T, β = 4000, 0.7
         y, Y, Z = _dgp_var(T, β, 42)
-        X = ones(T, 1)
 
-        rvar = spiv(y, Y, X, Z, SPIVwithVAR(); H = 4, p = 1)
-        rlp = spiv(y, Y, X, Z; H = 4)
+        rvar = spiv(y, Y, Z, SPIVwithVAR(); H = 4, p = 1)
+        rlp = spiv(y, Y, Z; H = 4)
 
         @test coef(rvar)[1] ≈ β atol = 0.05
         @test coef(rvar)[1] ≈ coef(rlp)[1] atol = 0.05
         # higher lag order also runs and recovers β
-        rvar2 = spiv(y, Y, X, Z, SPIVwithVAR(); H = 4, p = 2)
+        rvar2 = spiv(y, Y, Z, SPIVwithVAR(); H = 4, p = 2)
         @test coef(rvar2)[1] ≈ β atol = 0.05
     end
 
@@ -95,7 +94,7 @@ _runvar(y, Y, X, Z, h, p) = spiv(y, Y, X, Z, SPIVwithVAR(); H = h, p = p)
     @testset "populated blocks & type stability" begin
         T = 1000
         y, Y, Z = _dgp_var(T, 0.5, 3)
-        res = @inferred _runvar(y, Y, ones(T, 1), Z, 3, 1)
+        res = @inferred _runvar(y, Y, Z, 3, 1)
         @test res isa SPIVResult{Float64, SPIVwithVAR}
 
         wk = weak_iv_test(res)

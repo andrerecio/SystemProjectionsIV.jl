@@ -101,7 +101,7 @@ function make_dgp(; T, H, β_true, a, ρ, instrument_loading = 1.0, seed = 20240
         Yv[t] = s + ρ * u[t] + ν[t]         # ρ ≠ 0 ⇒ endogeneity
     end
     yv = β_true .* Yv .+ u
-    return yv, reshape(Yv, T, 1), ones(T, 1), reshape(ε, T, 1)
+    return yv, Yv, ε
 end
 
 const T = 4000
@@ -110,19 +110,19 @@ const β_true = 0.7
 const a = [1.0, 0.6, 0.3, 0.15]            # IRF of Y to the shock, horizons 0..H-1
 const ρ = 0.8
 
-y, Y, X, Z = make_dgp(; T = T, H = H, β_true = β_true, a = a, ρ = ρ)
+y, Y, Z = make_dgp(; T = T, H = H, β_true = β_true, a = a, ρ = ρ)
 
 println("SP-IV full-API walkthrough")
 @printf("DGP: T=%d, H=%d, true β=%.2f, IRF decay a=%s, endogeneity ρ=%.2f\n",
     T, H, β_true, string(a), ρ)
-println("Inputs: y (T,), Y (T×1), X=intercept (T×1), Z=instrument (T×1)")
+println("Inputs: y (T,), Y (T,), Z (T,) — vectors accepted; intercept added by default")
 
 # ---------------------------------------------------------------------------
 # 2. LP variant (default) — strong-identification estimates + summary table.
 # ---------------------------------------------------------------------------
 
-section("2. LP variant — spiv(y, Y, X, Z; H)")
-res_lp = spiv(y, Y, X, Z; H = H)
+section("2. LP variant — spiv(y, Y, Z; H)")
+res_lp = spiv(y, Y, Z; H = H)
 print_coef_table(res_lp; truth = β_true)
 println()
 println("  Built-in summary table (show):")
@@ -133,8 +133,8 @@ println()
 # 3. VAR variant — same data, compare β̂ to LP (Phase 5b: should be comparable).
 # ---------------------------------------------------------------------------
 
-section("3. VAR variant — spiv(y, Y, X, Z, SPIVwithVAR(); H, p)")
-res_var = spiv(y, Y, X, Z, SPIVwithVAR(); H = H, p = 1)
+section("3. VAR variant — spiv(y, Y, Z, SPIVwithVAR(); H, p)")
+res_var = spiv(y, Y, Z, SPIVwithVAR(); H = H, p = 1)
 print_coef_table(res_var; truth = β_true)
 @printf("\n  LP  β̂ = %.4f\n  VAR β̂ = %.4f   (difference %.4f)\n",
     coef(res_lp)[1], coef(res_var)[1], abs(coef(res_lp)[1] - coef(res_var)[1]))
@@ -148,11 +148,9 @@ println(" Strong-instrument design (instrument_loading = 1.0):")
 print_weak_iv(res_lp)
 
 println("\n Weak-instrument design (instrument_loading = 0.02):")
-yw, Yw,
-Xw,
-Zw = make_dgp(; T = T, H = H, β_true = β_true, a = a, ρ = ρ,
+yw, Yw, Zw = make_dgp(; T = T, H = H, β_true = β_true, a = a, ρ = ρ,
     instrument_loading = 0.02, seed = 11)
-res_weak = spiv(yw, Yw, Xw, Zw; H = H)
+res_weak = spiv(yw, Yw, Zw; H = H)
 print_weak_iv(res_weak)
 
 # ---------------------------------------------------------------------------
@@ -161,11 +159,11 @@ print_weak_iv(res_weak)
 
 section("5. Robust inference — robust_inference(res), AR vs KLM")
 println(" Anderson–Rubin (weak_iv = :AR):")
-res_ar = spiv(y, Y, X, Z; H = H, weak_iv = :AR)
+res_ar = spiv(y, Y, Z; H = H, weak_iv = :AR)
 print_robust(res_ar)
 
 println("\n Kleibergen LM (weak_iv = :KLM):")
-res_klm = spiv(y, Y, X, Z; H = H, weak_iv = :KLM)
+res_klm = spiv(y, Y, Z; H = H, weak_iv = :KLM)
 print_robust(res_klm)
 
 # ---------------------------------------------------------------------------
@@ -204,7 +202,7 @@ let Tg = 1000, Hg = 3, Kg = 2, Nzg = 2
         Yg[t, 2] = s2 + 0.8 * u[t] + 0.2 * randn()
     end
     yg = β1 .* Yg[:, 1] .+ β2 .* Yg[:, 2] .+ u
-    res_oi = spiv(yg, Yg, ones(Tg, 1), Zg; H = Hg)
+    res_oi = spiv(yg, Yg, Zg; H = Hg)
     println("  (true β = [$β1, $β2])")
     print_coef_table(res_oi)
     @printf("\n  outcome IRF shape    = %s\n", string(size(res_oi.irf_outcome.point)))

@@ -29,11 +29,11 @@ function make_dgp(; T, H, β_true, a, ρ, seed = 20240530)
         Yv[t] = s + ρ * u[t] + ν[t]
     end
     yv = β_true .* Yv .+ u
-    return yv, reshape(Yv, T, 1), ones(T, 1), reshape(ε, T, 1)
+    return yv, Yv, ε
 end
 
-y, Y, X, Z = make_dgp(; T = 4000, H = 8, β_true = 0.7, a = [1.0, 0.6, 0.3, 0.15], ρ = 0.8)
-res = spiv(y, Y, X, Z; H = 8)
+y, Y, Z = make_dgp(; T = 4000, H = 8, β_true = 0.7, a = [1.0, 0.6, 0.3, 0.15], ρ = 0.8)
+res = spiv(y, Y, Z; H = 8)
 
 here = @__DIR__
 

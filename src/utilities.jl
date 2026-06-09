@@ -50,6 +50,27 @@ function lag(X::AbstractMatrix{T}, n::Int; default = T(NaN)) where {T <: Abstrac
     return hcat([lag(col, n; default = default) for col in eachcol(X)]...)
 end
 
+# Data-space analogue of gragusa's `lags` formula term
+# (docs/ext/gragusa/Regress.jl/src/utils/formula.jl, exported by LocalProjections.jl):
+# `lags(x, n)` there expands to the columns lag(x,1), …, lag(x,n).
+"""
+    lags(x::AbstractVecOrMat, p::Int; default=NaN)
+
+Matrix of the first `p` lags of `x`: columns `[lag(x,1) … lag(x,p)]`, `T × (n_vars·p)`
+(lag-major column order for matrix input). The first `p` rows are padded with
+`default` (`NaN`), so trim the burn-in rows from all series before passing the
+result as controls to [`spiv`](@ref):
+
+```julia
+X = lags(x, p)[(p + 1):end, :]   # together with y[(p+1):end], etc.
+```
+"""
+function lags(
+        x::AbstractVecOrMat{T}, p::Int; default = T(NaN)) where {T <: AbstractFloat}
+    p ≥ 1 || throw(ArgumentError("p must be ≥ 1, got $p"))
+    return hcat([lag(x, n; default = default) for n in 1:p]...)
+end
+
 """
     create_lags(X::AbstractMatrix{T}, p::Int) where T
 

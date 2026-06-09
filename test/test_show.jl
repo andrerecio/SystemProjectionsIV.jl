@@ -34,10 +34,10 @@ end
     # -------------------------------------------------------------------
     @testset "auto-bandwidth HAC" begin
         y, Y, Z = _dgp_show(400, 4, 0.7, 20240530)
-        rf = spiv(y, Y, ones(400, 1), Z; H = 4)                  # default :fixed
-        rf2 = spiv(y, Y, ones(400, 1), Z; H = 4, hac = :fixed)
-        rnw = spiv(y, Y, ones(400, 1), Z; H = 4, hac = :neweywest)
-        ra = spiv(y, Y, ones(400, 1), Z; H = 4, hac = :andrews)
+        rf = spiv(y, Y, Z; H = 4)                  # default :fixed
+        rf2 = spiv(y, Y, Z; H = 4, hac = :fixed)
+        rnw = spiv(y, Y, Z; H = 4, hac = :neweywest)
+        ra = spiv(y, Y, Z; H = 4, hac = :andrews)
 
         @test rf.irf_outcome.se == rf2.irf_outcome.se            # default == :fixed
         for r in (rnw, ra)
@@ -48,7 +48,7 @@ end
         # Automatic selection departs from the fixed lag = horizon rule somewhere.
         @test rnw.irf_outcome.se != rf.irf_outcome.se
 
-        @test_throws ArgumentError spiv(y, Y, ones(400, 1), Z; H = 4, hac = :bogus)
+        @test_throws ArgumentError spiv(y, Y, Z; H = 4, hac = :bogus)
     end
 
     # -------------------------------------------------------------------
@@ -56,7 +56,7 @@ end
     # -------------------------------------------------------------------
     @testset "show" begin
         y, Y, Z = _dgp_show(400, 4, 0.7, 1)
-        res = spiv(y, Y, ones(400, 1), Z; H = 4)
+        res = spiv(y, Y, Z; H = 4)
 
         compact = sprint(show, res)
         @test occursin("SPIVResult", compact)
@@ -75,7 +75,7 @@ end
     # -------------------------------------------------------------------
     @testset "plot recipe" begin
         y, Y, Z = _dgp_show(300, 3, 0.5, 2)
-        res = spiv(y, Y, ones(300, 1), Z; H = 3)
+        res = spiv(y, Y, Z; H = 3)
 
         so = RecipesBase.apply_recipe(Dict{Symbol, Any}(), res)
         se = RecipesBase.apply_recipe(Dict{Symbol, Any}(:response => :endogenous), res)
@@ -105,8 +105,7 @@ end
         Y .+= 0.7 .* u .+ 0.2 .* randn(T)
         y = β .* Y .+ u
 
-        result = spiv(
-            y, reshape(Y, T, 1), ones(T, 1), reshape(ε, T, 1); H = H, weak_iv = :AR)
+        result = spiv(y, Y, ε; H = H, weak_iv = :AR)
 
         @test isfinite(coef(result)[1])
         @test coef(result)[1] ≈ β atol = 0.1

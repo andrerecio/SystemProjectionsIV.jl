@@ -163,6 +163,25 @@ dispatched on the spec and steps 2–5 are shared (`_forecast_errors` + `_spiv_e
 **Exit criteria:** both `SPIVwithLP` and `SPIVwithVAR` produce comparable estimates on the
 same data ✅; `Pkg.test()` green (203 pass) ✅.
 
+### Phase 5c — API ergonomics ✅
+
+Breaking signature change while the package is unregistered, prompted by an
+ergonomics review: every call site in the repo passed `X = ones(T, 1)` and most
+needed `reshape` for univariate series.
+
+- [x] `spiv(y, Y, Z, spec; H, X = nothing, intercept = true, ...)` — controls move to the
+  `X` keyword; an intercept is prepended by default (`intercept = false` opts out);
+  `Y`/`Z`/`X` accept vectors (promoted to one-column matrices).
+- [x] Non-finite inputs rejected with a helpful `ArgumentError` (NaN-padded lags must be
+  trimmed before estimating).
+- [x] Export `lag` and new `lags(x, p)` (gragusa-mirrored data helpers) for building
+  lagged controls; documented in `docs/src/api.md`.
+- [x] All call sites, README, docs pages, and examples updated; equivalence tests
+  (vector ≡ matrix input, default intercept ≡ explicit constant column).
+
+**Exit criteria:** default-intercept path bit-identical to the old `X = ones(T, 1)`
+results ✅; `Pkg.test()` green ✅; docs build clean ✅.
+
 ### Phase 5b' — VAR-IRF restriction (route B, deferred / experimental)
 
 Not implemented; under-specified in-repo and unverifiable. Would additionally:

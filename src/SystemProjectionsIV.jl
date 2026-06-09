@@ -20,5 +20,6 @@ export AbstractSPIVSpec, SPIVwithLP, SPIVwithVAR
 export ForecastErrors, WeakIVDiagnostic, RobustInference, IRFBlock, SPIVResult
 export horizon, weak_iv_test, robust_inference, spec
 export spiv
+export lag, lags
 
 end # module SystemProjectionsIV

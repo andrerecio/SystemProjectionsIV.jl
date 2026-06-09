@@ -53,7 +53,7 @@ end
         Zv = randn(T, Nz)
         yv = randn(T)
 
-        res = spiv(yv, Yv, ones(T, 1), Zv; H = H)
+        res = spiv(yv, Yv, Zv; H = H)
 
         y_H, Y_H, Z_p, Czz, T_eff = _resid_irf(yv, Yv, Zv, H)
         iZ = inv(sqrt(Symmetric(Czz ./ T_eff)))
@@ -93,7 +93,7 @@ end
         Zv = reshape(0.7 .* vec(Yv) .+ randn(T), T, 1)
         yv = 0.5 .* vec(Yv) .+ randn(T)
 
-        res = spiv(yv, Yv, ones(T, 1), Zv; H = H)
+        res = spiv(yv, Yv, Zv; H = H)
 
         y_H, Y_H, Z_p, Czz, T_eff = _resid_irf(yv, Yv, Zv, H)
         iZ = inv(sqrt(Symmetric(Czz ./ T_eff)))
@@ -126,7 +126,7 @@ end
         Zv = reshape(0.8 .* vec(Yv) .+ randn(T), T, 1)
         yv = 0.6 .* vec(Yv) .+ randn(T)
 
-        res = spiv(yv, Yv, ones(T, 1), Zv; H = H)
+        res = spiv(yv, Yv, Zv; H = H)
         io = res.irf_outcome
         ie = res.irf_endogenous
 
