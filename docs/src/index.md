@@ -11,6 +11,12 @@ responses rather than raw variables, conditioning on a rich set of predetermined
 controls so that many lags of instruments can be used without losing identifying
 power.
 
+!!! note
+    This is an independent, unofficial implementation of the SP-IV methodology
+    developed by Lewis & Mertens (2024). It is not affiliated with or endorsed by
+    the paper's authors, and any implementation errors are the package author's
+    own.
+
 The structural equation
 
 ```math
@@ -82,5 +88,7 @@ repository.
 
 ## References
 
-- Lewis, D. J., & Mertens, K. (2024). *System Projections IV*. Federal Reserve
-  Bank of Dallas Working Paper.
+- Lewis, D. J., & Mertens, K. (2024). *Dynamic Identification Using System
+  Projections on Instrumental Variables*. Federal Reserve Bank of Dallas Working
+  Paper No. 2204 (revised July 2024).
+  [doi:10.24149/wp2204r3](https://doi.org/10.24149/wp2204r3)

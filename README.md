@@ -10,6 +10,8 @@ A Julia implementation of the **System Projections IV (SP-IV)** estimator of Lew
 
 > **Status:** alpha, under active development. The API is not yet stable.
 
+> **Note:** This is an independent, unofficial implementation of the SP-IV methodology developed by Lewis & Mertens (2024). It is not affiliated with or endorsed by the paper's authors, and any implementation errors are the package author's own.
+
 ## Installation
 
 The package is not registered. Install directly from the repository:
@@ -40,6 +42,8 @@ Y .+= 0.7 .* u .+ 0.2 .* randn(T)     # endogeneity
 y = β .* Y .+ u
 
 # y (T,), Y (T,K), X (T,Nx) controls, Z (T,Nz) instruments, H leads.
+# X holds the deterministic terms and any (lagged) controls to residualise on —
+# here just an intercept; pass a T × 0 matrix (zeros(T, 0)) for no controls.
 result = spiv(y, reshape(Y, T, 1), ones(T, 1), reshape(ε, T, 1); H = H, weak_iv = :AR)
 
 result                  # pretty summary: β̂, weak-IV verdict, robust set, IRF shapes
@@ -89,7 +93,9 @@ See `docs/technical.md` for the full mathematical specification.
 
 ## References
 
-- Lewis, D. J., & Mertens, K. (2024). *System Projections IV*. Federal Reserve Bank of Dallas Working Paper.
+- Lewis, D. J., & Mertens, K. (2024). *Dynamic Identification Using System Projections on Instrumental Variables*. Federal Reserve Bank of Dallas Working Paper No. 2204 (revised July 2024). [doi:10.24149/wp2204r3](https://doi.org/10.24149/wp2204r3)
+
+If you use this package, please cite the paper and the package — see [`CITATION.bib`](CITATION.bib).
 
 ## License
 
