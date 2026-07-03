@@ -171,7 +171,7 @@ function _apply_cumulation(
     # Cumulate each bootstrap draw
     cum_draws = copy(draws)
     for r in axes(cum_draws, 1)
-        _cumulate_point!(view(cum_draws,r,:,:,:), idx)
+        _cumulate_point!(view(cum_draws, r, :, :, :), idx)
     end
 
     # Recompute bands from cumulated draws
@@ -416,7 +416,7 @@ function irf(
     # Apply cumulation to each draw if requested
     if cumulate_idx !== nothing
         for i in 1:n_draws
-            _cumulate_point!(view(irf_draws_raw,i,:,:,:), cumulate_idx)
+            _cumulate_point!(view(irf_draws_raw, i, :, :, :), cumulate_idx)
         end
     end
 
@@ -501,7 +501,7 @@ function compute_irf_point(model::VARModel{T}, P::Matrix{T}, horizon::Int) where
 
     # IRF_h = Φ_h * P
     for h in 1:horizon
-        mul!(view(irf_array,(h + 1),:,:), Φ[:, :, h + 1], P)
+        mul!(view(irf_array, (h + 1), :, :), Φ[:, :, h + 1], P)
     end
 
     return irf_array
@@ -648,7 +648,7 @@ function cumulative_irf(irf::IRFResult; vars = nothing)
         raw_draws = _unwrap_irf_4d(irf.bootstrap_draws)
         cum_draws = copy(raw_draws)
         for r in axes(cum_draws, 1)
-            _cumulate_point!(view(cum_draws,r,:,:,:), cumulate_idx)
+            _cumulate_point!(view(cum_draws, r, :, :, :), cumulate_idx)
         end
 
         lower_raw, upper_raw = compute_bands_from_draws(cum_point, cum_draws, irf.coverage)
@@ -728,7 +728,7 @@ function cumulative_irf(irf::SignRestrictedIRFResult; vars = nothing)
     raw_draws = _unwrap_irf_4d(irf.irf_draws)
     cum_draws = copy(raw_draws)
     for r in axes(cum_draws, 1)
-        _cumulate_point!(view(cum_draws,r,:,:,:), cumulate_idx)
+        _cumulate_point!(view(cum_draws, r, :, :, :), cumulate_idx)
     end
 
     cum_median = dropdims(median(cum_draws; dims = 1); dims = 1)
