@@ -618,9 +618,9 @@ function _proxy_svar_mbb_impl(
                 target
             )
 
-            copyto!(view(irf_store,:,:,b), dyn_buf.irf)
-            copyto!(view(irf_norm_store,:,:,b), dyn_buf.irf_norm)
-            copyto!(view(fevd_store,:,:,b), dyn_buf.fevd)
+            copyto!(view(irf_store, :, :, b), dyn_buf.irf)
+            copyto!(view(irf_norm_store, :, :, b), dyn_buf.irf_norm)
+            copyto!(view(fevd_store, :, :, b), dyn_buf.fevd)
 
             # 4g: AR statistics — anchor on target variable's impact
             if inf.compute_ar
@@ -639,9 +639,9 @@ function _proxy_svar_mbb_impl(
         catch e
             n_failed += 1
             # Fill failed draws with NaN rather than biasing with previous draw
-            fill!(view(irf_store,:,:,b), NaN)
-            fill!(view(irf_norm_store,:,:,b), NaN)
-            fill!(view(fevd_store,:,:,b), NaN)
+            fill!(view(irf_store, :, :, b), NaN)
+            fill!(view(irf_norm_store, :, :, b), NaN)
+            fill!(view(fevd_store, :, :, b), NaN)
         end
     end
 
