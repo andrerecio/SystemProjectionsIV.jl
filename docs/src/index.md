@@ -79,8 +79,12 @@ weak_iv_test(result)    # g statistic, critical value, is_weak
 ```
 
 ```@example quickstart
-result.irf_outcome.point   # outcome IRF point estimates (H × Nz)
+irf(result).point       # outcome IRF point estimates (H × Nz)
 ```
+
+`summary(result)` prints the full estimation table, and lagged controls are one
+keyword away — `spiv(y, Y, ε; H = H, xlags = 4)` conditions on four lags of all
+the variables, with the burn-in sample adjustment handled automatically.
 
 See the [Guide](@ref) for the LP and VAR variants, weak-instrument-robust
 inference, and IRF options, and the [API](@ref) for the full reference. The

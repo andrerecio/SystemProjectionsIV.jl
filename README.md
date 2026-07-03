@@ -46,21 +46,22 @@ y = β .* Y .+ u
 result = spiv(y, Y, ε; H = H, weak_iv = :AR)
 
 result                  # pretty summary: β̂, weak-IV verdict, robust set, IRF shapes
+summary(result)         # the same table, R-style
 coef(result)            # β̂
 confint(result)         # strong-identification 95% CI
 weak_iv_test(result)    # g statistic, critical value, is_weak
 robust_inference(result)            # AR confidence set + per-parameter bounds
-result.irf_outcome.point            # outcome IRF point estimates (H × Nz)
+irf(result).point                   # outcome IRF point estimates (H × Nz)
+irf(result; response = :endogenous) # endogenous-regressor IRFs (H × K × Nz)
 ```
 
 `spiv` returns an `SPIVResult` carrying the structural estimate β̂, its sandwich covariance under strong identification, residuals, weak-IV diagnostics, robust (AR or KLM) confidence sets, and the implied IRFs with HAC standard errors. Pass `hac = :neweywest` (or `:andrews`) for automatic-bandwidth Newey–West IRF standard errors instead of the default fixed lag truncation. With `Plots` loaded, `plot(result)` draws the outcome IRF bands (`plot(result; response = :endogenous)` for the endogenous IRFs).
 
-Controls enter through keywords. `X = ...` adds columns to residualise on beyond the automatic intercept (`intercept = false` drops the constant), and the exported `lags` helper builds lagged-control matrices — trim its NaN-padded burn-in rows from every input:
+Controls enter through keywords, with the sample adjusted automatically (Stata/R-style): leading rows containing NaN — the burn-in that the exported `lag`/`lags` helpers produce — are dropped from every input. `xlags = p` controls for `p` lags of all the variables (the same information set as the VAR variant), and `X = ...` adds arbitrary extra columns beyond the automatic intercept (`intercept = false` drops the constant):
 
 ```julia
-p = 4
-keep = (p + 1):T
-result = spiv(y[keep], Y[keep], ε[keep]; H = H, X = lags(Y, p)[keep, :])
+result = spiv(y, Y, ε; H = H, xlags = 4)             # lags of [y Y ε] as controls
+result = spiv(y, Y, ε; H = H, X = lags(Y, 4))        # your own lagged controls
 ```
 
 ## Examples

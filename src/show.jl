@@ -88,3 +88,17 @@ function Base.show(io::IO, ::MIME"text/plain", r::SPIVResult)
         " (point/se/lower/upper in result.irf_*)"
     )
 end
+
+"""
+    summary([io::IO,] r::SPIVResult)
+
+Print the full estimation summary — coefficient table, weak-IV verdict, robust
+confidence set, and IRF shapes — like R's `summary()`. Identical to the REPL
+display of `r`; returns `nothing`.
+"""
+function Base.summary(io::IO, r::SPIVResult)
+    show(io, MIME("text/plain"), r)
+    println(io)
+    return nothing
+end
+Base.summary(r::SPIVResult) = summary(stdout, r)

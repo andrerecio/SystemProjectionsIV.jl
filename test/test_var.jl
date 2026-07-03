@@ -89,7 +89,46 @@ _runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
     end
 
     # -------------------------------------------------------------------
-    # 4. Inference / IRF blocks are populated and finite; type stability.
+    # 4. LP-only kwargs are ignored with a single warning; the result is
+    #    bit-identical to the clean call. Leading burn-in rows in y/Y/Z are
+    #    still trimmed for the VAR variant.
+    # -------------------------------------------------------------------
+    @testset "ignored kwargs warn" begin
+        T, H, p = 500, 3, 1
+        y, Y, Z = _dgp_var(T, 0.6, 21)
+
+        r_clean = @test_logs spiv(y, Y, Z, SPIVwithVAR(); H = H, p = p)
+
+        warn_msg = r"ignored with SPIVwithVAR"
+        r_X = @test_logs (:warn, warn_msg) spiv(
+            y, Y, Z, SPIVwithVAR(); H = H, p = p, X = randn(T, 2))
+        @test_logs (:warn, warn_msg) spiv(
+            y, Y, Z, SPIVwithVAR(); H = H, p = p, intercept = false)
+        @test_logs (:warn, warn_msg) spiv(y, Y, Z, SPIVwithVAR(); H = H, p = p, xlags = 2)
+        # all three at once still produce a single warning
+        r_all = @test_logs (:warn, warn_msg) spiv(
+            y, Y, Z, SPIVwithVAR(); H = H, p = p,
+            X = randn(T, 2), intercept = false, xlags = 2)
+        @test coef(r_X) == coef(r_clean)
+        @test coef(r_all) == coef(r_clean)
+
+        # NaN-padded X is ignored wholesale — it neither errors nor trims.
+        r_nanX = @test_logs (:warn, warn_msg) spiv(
+            y, Y, Z, SPIVwithVAR(); H = H, p = p, X = lags(vec(y), 4))
+        @test coef(r_nanX) == coef(r_clean)
+        @test nobs(r_nanX) == nobs(r_clean)
+
+        # Burn-in in the observables themselves is trimmed like the LP variant.
+        y_pad = copy(y)
+        y_pad[1:2] .= NaN
+        r_pad = spiv(y_pad, Y, Z, SPIVwithVAR(); H = H, p = p)
+        r_cut = spiv(y[3:end], Y[3:end, :], Z[3:end, :], SPIVwithVAR(); H = H, p = p)
+        @test coef(r_pad) == coef(r_cut)
+        @test nobs(r_pad) == (T - 2) - p - (H - 1)
+    end
+
+    # -------------------------------------------------------------------
+    # 5. Inference / IRF blocks are populated and finite; type stability.
     # -------------------------------------------------------------------
     @testset "populated blocks & type stability" begin
         T = 1000

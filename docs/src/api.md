@@ -41,13 +41,15 @@ horizon
 weak_iv_test
 robust_inference
 spec
+irf
+Base.summary(::IO, ::SPIVResult)
 ```
 
 ## Data helpers
 
 Utilities for building lagged-control matrices for the `X` keyword of
-[`spiv`](@ref). Both pad unavailable initial observations with `NaN` — trim the
-burn-in rows from all inputs before estimating.
+[`spiv`](@ref). Both pad unavailable initial observations with `NaN`;
+[`spiv`](@ref) drops that burn-in from all inputs automatically.
 
 ```@docs
 lag

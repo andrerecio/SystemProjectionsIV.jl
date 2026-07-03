@@ -50,16 +50,21 @@ res_lp = spiv(y, Y, Z; H = H)
 coef(res_lp)        # β̂ — compare to the true β = 0.7
 ```
 
-Additional controls enter through the `X` keyword (`intercept = false` drops
-the constant). The exported [`lags`](@ref) helper builds lagged-control
-matrices; it pads the first `p` rows with `NaN`, so trim the burn-in rows from
-**every** input:
+Additional controls enter through keywords, and the sample is adjusted
+automatically (Stata/R-style): leading rows containing `NaN` — the burn-in the
+exported [`lags`](@ref) helper pads with — are dropped from every input.
+`xlags = p` controls for `p` lags of all the variables `[y Y Z]` (the same
+information set as the VAR variant below), while `X = ...` passes arbitrary
+extra columns (`intercept = false` drops the automatic constant):
 
 ```@example guide
-p = 4
-keep = (p + 1):T
-res_ctrl = spiv(y[keep], Y[keep], Z[keep]; H = H, X = lags(Y, p)[keep, :])
+res_ctrl = spiv(y, Y, Z; H = H, xlags = 4)     # lags of [y Y Z] as controls
 coef(res_ctrl)
+```
+
+```@example guide
+res_lagX = spiv(y, Y, Z; H = H, X = lags(Y, 4))  # your own lagged controls
+coef(res_lagX)
 ```
 
 The result supports the usual StatsBase accessors:
@@ -68,12 +73,18 @@ The result supports the usual StatsBase accessors:
 [coef(res_lp) stderror(res_lp) confint(res_lp)]
 ```
 
+and `summary` prints the full estimation table, R-style:
+
+```@example guide
+summary(res_lp)
+```
+
 ## VAR variant
 
 Passing [`SPIVwithVAR`](@ref) fits a VAR(`p`) on the stacked `[Y; y; z]` and
 builds forecast errors from its MA representation; the controls (`X`,
-`intercept`) are ignored because the VAR's own lags subsume them. On the same data it should give a
-comparable estimate:
+`intercept`, `xlags`) are ignored with a warning because the VAR's own lags
+subsume them. On the same data it should give a comparable estimate:
 
 ```@example guide
 res_var = spiv(y, Y, Z, SPIVwithVAR(); H = H, p = 1)
@@ -115,15 +126,16 @@ robust_inference(spiv(y, Y, Z; H = H, weak_iv = :KLM)).bounds
 ## Impulse responses
 
 The result carries the implied IRFs with Newey–West HAC standard errors as
-[`IRFBlock`](@ref)s: `irf_outcome` (`H × Nz`) and `irf_endogenous`
-(`H × K × Nz`).
+[`IRFBlock`](@ref)s, returned by [`irf`](@ref): the outcome IRF (`H × Nz`,
+the default) and the endogenous-regressor IRF (`H × K × Nz`,
+`response = :endogenous`).
 
 ```@example guide
-res_lp.irf_outcome.point        # outcome IRF point estimates
+irf(res_lp).point               # outcome IRF point estimates
 ```
 
 ```@example guide
-res_lp.irf_outcome.se           # HAC standard errors
+irf(res_lp).se                  # HAC standard errors
 ```
 
 The HAC bandwidth defaults to a fixed lag truncation (`hac = :fixed`); pass

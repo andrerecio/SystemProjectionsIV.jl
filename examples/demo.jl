@@ -54,28 +54,28 @@ function print_robust(res)
 end
 
 function print_outcome_irf(res)
-    irf = res.irf_outcome                   # H × Nz
-    H, Nz = size(irf.point)
+    blk = irf(res)                          # H × Nz IRFBlock
+    H, Nz = size(blk.point)
     println("  outcome IRF (H × Nz = $H × $Nz):  point [lower, upper] (se)")
     for n in 1:Nz
         println("   instrument $n:")
         for h in 1:H
             @printf("    h=%d  %8.4f  [%7.4f, %7.4f]  (se %.4f)\n",
-                h - 1, irf.point[h, n], irf.lower[h, n], irf.upper[h, n], irf.se[h, n])
+                h - 1, blk.point[h, n], blk.lower[h, n], blk.upper[h, n], blk.se[h, n])
         end
     end
 end
 
 function print_endogenous_irf(res)
-    irf = res.irf_endogenous                # H × K × Nz
-    H, K, Nz = size(irf.point)
+    blk = irf(res; response = :endogenous)  # H × K × Nz IRFBlock
+    H, K, Nz = size(blk.point)
     println("  endogenous IRF (H × K × Nz = $H × $K × $Nz):  point (se)")
     for n in 1:Nz, k in 1:K
 
         println("   instrument $n → endogenous Y[$k]:")
         for h in 1:H
-            @printf("    h=%d  %8.4f  (se %.4f)\n", h - 1, irf.point[h, k, n],
-                irf.se[h, k, n])
+            @printf("    h=%d  %8.4f  (se %.4f)\n", h - 1, blk.point[h, k, n],
+                blk.se[h, k, n])
         end
     end
 end
@@ -125,9 +125,15 @@ section("2. LP variant — spiv(y, Y, Z; H)")
 res_lp = spiv(y, Y, Z; H = H)
 print_coef_table(res_lp; truth = β_true)
 println()
-println("  Built-in summary table (show):")
-show(res_lp)
-println()
+println("  Built-in summary table (R-style):")
+summary(res_lp)
+
+# Lagged controls are one keyword away: xlags = p conditions on p lags of
+# [y Y Z] (the SPIVwithVAR(p) information set), with the NaN burn-in from the
+# lag construction dropped from every input automatically.
+res_ctrl = spiv(y, Y, Z; H = H, xlags = 4)
+@printf("\n  with xlags = 4:  β̂ = %.4f  (T_eff = %d, Nx = %d)\n",
+    coef(res_ctrl)[1], nobs(res_ctrl), res_ctrl.Nx)
 
 # ---------------------------------------------------------------------------
 # 3. VAR variant — same data, compare β̂ to LP (Phase 5b: should be comparable).
@@ -170,7 +176,7 @@ print_robust(res_klm)
 # 6. Impulse responses — outcome (H×Nz) and endogenous (H×K×Nz) with HAC bands.
 # ---------------------------------------------------------------------------
 
-section("6. Impulse responses — res.irf_outcome / res.irf_endogenous")
+section("6. Impulse responses — irf(res) / irf(res; response = :endogenous)")
 print_outcome_irf(res_lp)
 println()
 print_endogenous_irf(res_lp)

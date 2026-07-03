@@ -182,6 +182,31 @@ needed `reshape` for univariate series.
 **Exit criteria:** default-intercept path bit-identical to the old `X = ones(T, 1)`
 results ✅; `Pkg.test()` green ✅; docs build clean ✅.
 
+### Phase 5d — sample handling + accessors (v0.2.0) ✅
+
+Second ergonomics pass for the applied-economist audience, all additive:
+
+- [x] Automatic sample adjustment (Stata/R-style): `spiv` drops the leading rows that
+  contain `NaN` in any input (the burn-in from `lag`/`lags`), so `X = lags(Y, p)`
+  works without the manual `keep = (p+1):T` dance. Any other non-finite value — `Inf`
+  anywhere, `NaN` after the burn-in — remains a hard `ArgumentError` (data errors,
+  not lag padding). Trim is silent; the adjusted sample shows up as `T_eff`.
+- [x] `xlags` kwarg: `spiv(y, Y, Z; H, xlags = p)` appends `lags(hcat(y, Y, Z), p)` to
+  the controls (auto-trimmed) — the same conditioning information set as
+  `SPIVwithVAR()` with lag order `p`.
+- [x] `Base.summary(::SPIVResult)` prints the full coefficient/diagnostics table (R
+  muscle-memory; deliberate bend of the "brief string" contract on our own type) and
+  exported `irf(r; response = :outcome/:endogenous)` returns the `IRFBlock`.
+- [x] `@warn` when `X` / `intercept = false` / `xlags` are passed with `SPIVwithVAR`
+  (previously silently ignored; NaN-padded `X` under VAR used to *error*, now
+  warns and runs — intentional behavior change).
+- [x] Tests: auto-trim ≡ manual trim and `xlags` ≡ hand-built lags bit-identical;
+  `@test_logs` for the VAR warnings; `summary`/`irf` round-trips; README/docs/examples
+  updated.
+
+**Exit criteria:** equivalence tests bit-identical ✅; `Pkg.test()` green ✅; docs build
+clean ✅.
+
 ### Phase 5b' — VAR-IRF restriction (route B, deferred / experimental)
 
 Not implemented; under-specified in-repo and unverifiable. Would additionally:

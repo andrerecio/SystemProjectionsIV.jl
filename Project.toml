@@ -1,7 +1,7 @@
 name = "SystemProjectionsIV"
 uuid = "25f786b6-7bab-4ac2-a587-eaae00a29f14"
 authors = ["Andrea Recine <andrearec123@gmail.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 CovarianceMatrices = "60f91f6f-d783-54cb-84f9-544141854719"

@@ -68,6 +68,10 @@ end
         @test occursin("Weak-IV", pretty)
         @test occursin("β[1", pretty)
         @test occursin("Robust (AR", pretty)
+
+        # summary prints the same table (plus a trailing newline), returns nothing.
+        @test sprint(summary, res) == pretty * "\n"
+        @test summary(devnull, res) === nothing
     end
 
     # -------------------------------------------------------------------
@@ -112,6 +116,14 @@ end
         @test size(confint(result)) == (1, 2)
         @test isfinite(weak_iv_test(result).g_min)
         @test robust_inference(result).method == :AR
-        @test size(result.irf_outcome.point) == (H, 1)
+        @test size(irf(result).point) == (H, 1)
+        @test size(irf(result; response = :endogenous).point) == (H, 1, 1)
+        @test summary(devnull, result) === nothing
+
+        # controls examples: xlags and an untrimmed lags matrix both run
+        r_xlags = spiv(y, Y, ε; H = H, xlags = 4)
+        @test coef(r_xlags)[1] ≈ β atol = 0.1
+        r_lagX = spiv(y, Y, ε; H = H, X = lags(Y, 4))
+        @test coef(r_lagX)[1] ≈ β atol = 0.1
     end
 end

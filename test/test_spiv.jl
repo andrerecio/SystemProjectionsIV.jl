@@ -138,9 +138,29 @@ _runspiv(y, Y, Z, h) = spiv(y, Y, Z; H = h)
         # insufficient degrees of freedom (intercept + 2 controls ⇒ Nx = 3)
         @test_throws ArgumentError spiv(
             randn(4), randn(4, 1), randn(4, 1); H = 1, X = randn(4, 2))
-        # NaN inputs (e.g. untrimmed lags) are rejected with a helpful message
+        # interior non-finite values (beyond the auto-dropped burn-in) are rejected
+        y_hole = randn(T)
+        y_hole[25] = NaN
+        @test_throws ArgumentError spiv(y_hole, randn(T, 1), randn(T, 1); H = 2)
+        X_hole = randn(T, 1)
+        X_hole[30, 1] = Inf
         @test_throws ArgumentError spiv(
-            randn(T), randn(T, 1), randn(T, 1); H = 2, X = lags(randn(T), 2))
+            randn(T), randn(T, 1), randn(T, 1); H = 2, X = X_hole)
+        # only the NaN sentinel marks burn-in: a leading Inf is a data error
+        y_inf = randn(T)
+        y_inf[1] = Inf
+        @test_throws ArgumentError spiv(y_inf, randn(T, 1), randn(T, 1); H = 2)
+        # nothing left after the burn-in
+        @test_throws ArgumentError spiv(
+            fill(NaN, T), randn(T, 1), randn(T, 1); H = 2)
+        # trim leaves too few observations for the horizon
+        @test_throws ArgumentError spiv(
+            randn(6), randn(6, 1), randn(6, 1); H = 4, X = lags(randn(6), 3))
+        # xlags validation
+        @test_throws ArgumentError spiv(
+            randn(T), randn(T, 1), randn(T, 1); H = 2, xlags = -1)
+        @test_throws ArgumentError spiv(
+            randn(T), randn(T, 1), randn(T, 1); H = 2, xlags = T)
     end
 
     # -------------------------------------------------------------------
@@ -207,7 +227,106 @@ _runspiv(y, Y, Z, h) = spiv(y, Y, Z; H = h)
     end
 
     # -------------------------------------------------------------------
-    # 7. lag / lags data helpers (exported for building the X controls).
+    # 7. Automatic sample adjustment: leading non-finite rows (the lag/lags
+    #    burn-in) are dropped from every input, bit-identically to trimming
+    #    by hand.
+    # -------------------------------------------------------------------
+    @testset "auto-trim burn-in" begin
+        Random.seed!(11)
+        T = 300
+        H = 3
+        p = 4
+        yv = randn(T)
+        Yv = randn(T)
+        z = randn(T)
+        keep = (p + 1):T
+
+        # X = lags(...) passed untrimmed ≡ the manual keep-dance (bit-identical).
+        r_auto = spiv(yv, Yv, z; H = H, X = lags(Yv, p))
+        r_hand = spiv(yv[keep], Yv[keep], z[keep]; H = H, X = lags(Yv, p)[keep, :])
+        @test coef(r_auto) == coef(r_hand)
+        @test vcov(r_auto) == vcov(r_hand)
+        @test r_auto.irf_outcome.point == r_hand.irf_outcome.point
+        @test nobs(r_auto) == (T - p) - (H - 1)
+
+        # The burn-in can sit in y or Z themselves, not only in X.
+        y_pad = copy(yv)
+        y_pad[1:2] .= NaN
+        r_ypad = spiv(y_pad, Yv, z; H = H)
+        r_ycut = spiv(yv[3:end], Yv[3:end], z[3:end]; H = H)
+        @test coef(r_ypad) == coef(r_ycut)
+
+        # Ragged burn-in: the longest one wins (X has p bad rows, y has 2).
+        r_rag = spiv(y_pad, Yv, z; H = H, X = lags(Yv, p))
+        @test coef(r_rag) == coef(r_hand)
+        @test nobs(r_rag) == (T - p) - (H - 1)
+
+        # Vector X input with burn-in also works.
+        r_vecX = spiv(yv, Yv, z; H = H, X = lag(Yv, 1))
+        r_vecXh = spiv(yv[2:end], Yv[2:end], z[2:end]; H = H, X = lag(Yv, 1)[2:end])
+        @test coef(r_vecX) == coef(r_vecXh)
+    end
+
+    # -------------------------------------------------------------------
+    # 8. xlags: one keyword builds the lagged-[y Y Z] controls and adjusts
+    #    the sample — the SPIVwithVAR(p) information set for the LP variant.
+    # -------------------------------------------------------------------
+    @testset "xlags" begin
+        Random.seed!(12)
+        T = 400
+        H = 3
+        p = 2
+        yv = randn(T)
+        Yv = randn(T, 2)
+        z = randn(T)
+        keep = (p + 1):T
+
+        # xlags ≡ hand-built lags of [y Y Z] ≡ the fully manual call (bit-identical).
+        r_x = spiv(yv, Yv, z; H = H, xlags = p)
+        r_built = spiv(yv, Yv, z; H = H, X = lags(hcat(yv, Yv, z), p))
+        r_hand = spiv(
+            yv[keep], Yv[keep, :], z[keep]; H = H,
+            X = lags(hcat(yv, Yv, z), p)[keep, :])
+        @test coef(r_x) == coef(r_built)
+        @test vcov(r_x) == vcov(r_built)
+        @test coef(r_x) == coef(r_hand)
+
+        # Nx = intercept + (K + 1 + Nz) · xlags.
+        K, Nz = size(Yv, 2), 1
+        @test r_x.Nx == 1 + (K + 1 + Nz) * p
+        @test nobs(r_x) == (T - p) - (H - 1)
+
+        # Combines with user controls (user X first, lag block appended).
+        W = randn(T, 1)
+        r_both = spiv(yv, Yv, z; H = H, X = W, xlags = p)
+        r_both2 = spiv(yv, Yv, z; H = H, X = hcat(W, lags(hcat(yv, Yv, z), p)))
+        @test coef(r_both) == coef(r_both2)
+        @test r_both.Nx == 1 + 1 + (K + 1 + Nz) * p
+
+        # xlags = 0 is the default (off).
+        r_off = spiv(yv, Yv, z; H = H, xlags = 0)
+        r_def = spiv(yv, Yv, z; H = H)
+        @test coef(r_off) == coef(r_def)
+
+        # LP with xlags = p is comparable to SPIVwithVAR(p) on a persistent DGP.
+        Random.seed!(13)
+        Tc = 4000
+        εc = randn(Tc)
+        uc = 0.3 .* randn(Tc)
+        Yc = zeros(Tc)
+        for t in 1:Tc, j in 0:3
+
+            t - j ≥ 1 && (Yc[t] += 0.8^j * εc[t - j])
+        end
+        Yc .+= 0.7 .* uc .+ 0.2 .* randn(Tc)
+        yc = 0.5 .* Yc .+ uc
+        r_lp = spiv(yc, Yc, εc; H = 4, xlags = 1)
+        r_var = spiv(yc, Yc, εc, SPIVwithVAR(); H = 4, p = 1)
+        @test coef(r_lp)[1] ≈ coef(r_var)[1] atol = 0.1
+    end
+
+    # -------------------------------------------------------------------
+    # 9. lag / lags data helpers (exported for building the X controls).
     # -------------------------------------------------------------------
     @testset "lag / lags helpers" begin
         x = [1.0, 2.0, 3.0, 4.0, 5.0]

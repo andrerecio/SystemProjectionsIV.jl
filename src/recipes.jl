@@ -6,12 +6,10 @@
 # Each panel shows the point IRF, a shaded band (lower–upper), and a dotted zero line.
 
 @recipe function f(r::SPIVResult; response = :outcome)
-    response in (:outcome, :endogenous) ||
-        throw(ArgumentError("response must be :outcome or :endogenous, got :$response"))
+    blk = irf(r; response = response)   # validates `response`, selects the IRF block
     h = 0:(r.H - 1)
 
     if response === :outcome
-        blk = r.irf_outcome                       # H × Nz
         layout := (1, r.Nz)
         legend := false
         for n in 1:r.Nz
@@ -33,7 +31,6 @@
             end
         end
     else
-        blk = r.irf_endogenous                    # H × K × Nz
         layout := (r.K, r.Nz)
         legend := false
         idx = 0

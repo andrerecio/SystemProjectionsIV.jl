@@ -333,3 +333,17 @@ The variant tag the result was produced with ([`SPIVwithLP`](@ref) or
 [`SPIVwithVAR`](@ref)).
 """
 spec(r::SPIVResult) = r.spec
+
+"""
+    irf(r::SPIVResult; response = :outcome) -> IRFBlock
+
+The impulse responses to the instrumented shocks, with HAC standard errors and
+normal bands: `response = :outcome` (default) returns the outcome IRF (`H × Nz`),
+`response = :endogenous` the endogenous-regressor IRF (`H × K × Nz`). See
+[`IRFBlock`](@ref) for the `point`/`se`/`lower`/`upper` fields.
+"""
+function irf(r::SPIVResult; response::Symbol = :outcome)
+    response === :outcome && return r.irf_outcome
+    response === :endogenous && return r.irf_endogenous
+    throw(ArgumentError("response must be :outcome or :endogenous, got :$response"))
+end

@@ -18,7 +18,7 @@ include("recipes.jl")
 
 export AbstractSPIVSpec, SPIVwithLP, SPIVwithVAR
 export ForecastErrors, WeakIVDiagnostic, RobustInference, IRFBlock, SPIVResult
-export horizon, weak_iv_test, robust_inference, spec
+export horizon, weak_iv_test, robust_inference, spec, irf
 export spiv
 export lag, lags
 

@@ -58,11 +58,11 @@ end
 
 Matrix of the first `p` lags of `x`: columns `[lag(x,1) … lag(x,p)]`, `T × (n_vars·p)`
 (lag-major column order for matrix input). The first `p` rows are padded with
-`default` (`NaN`), so trim the burn-in rows from all series before passing the
-result as controls to [`spiv`](@ref):
+`default` (`NaN`); [`spiv`](@ref) drops that burn-in from all inputs automatically,
+so the result can be passed as controls directly:
 
 ```julia
-X = lags(x, p)[(p + 1):end, :]   # together with y[(p+1):end], etc.
+spiv(y, Y, z; H = 8, X = lags(x, p))
 ```
 """
 function lags(

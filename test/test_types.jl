@@ -189,6 +189,10 @@ using StatsBase
         @test weak_iv_test(r) === r.weak_iv
         @test robust_inference(r) === r.robust
         @test spec(r) === r.spec
+        @test irf(r) === r.irf_outcome
+        @test irf(r; response = :outcome) === r.irf_outcome
+        @test irf(r; response = :endogenous) === r.irf_endogenous
+        @test_throws ArgumentError irf(r; response = :bogus)
 
         # Strong-IV normal CI: width = 2 · z_{0.975} · SE
         ci = confint(r; level = 0.95)
