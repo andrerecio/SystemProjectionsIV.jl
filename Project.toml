@@ -1,7 +1,7 @@
 name = "SystemProjectionsIV"
 uuid = "25f786b6-7bab-4ac2-a587-eaae00a29f14"
-authors = ["Andrea Recine <andrearec123@gmail.com>"]
 version = "0.2.0"
+authors = ["Andrea Recine <andrearec123@gmail.com>"]
 
 [deps]
 CovarianceMatrices = "60f91f6f-d783-54cb-84f9-544141854719"
@@ -17,5 +17,5 @@ LinearAlgebra = "1.11"
 Printf = "1.11"
 RecipesBase = "1"
 StatsBase = "0.34"
-StatsFuns = "1"
+StatsFuns = "1, 2"
 julia = "1.11"
