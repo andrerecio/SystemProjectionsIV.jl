@@ -6,10 +6,13 @@ CurrentModule = SystemProjectionsIV
 
 A Julia implementation of the **System Projections IV (SP-IV)** estimator of
 Lewis & Mertens (2024). SP-IV identifies structural macroeconomic relationships
-(such as the Phillips Curve) by exploiting external instruments through impulse
-responses rather than raw variables, conditioning on a rich set of predetermined
-controls so that many lags of instruments can be used without losing identifying
-power.
+(such as the Phillips Curve) by regressing impulse responses to external
+instruments on each other, estimated with local projections or VARs. Because
+identification comes from the responses at multiple horizons, a rich set of lagged
+controls can be included — so only contemporaneous and lead exogeneity of the
+instruments is required — without shrinking the instruments' explanatory power to
+that of the contemporaneous shock, as happens in IV with distributed lags of shocks
+as instruments.
 
 !!! note
     This is an independent, unofficial implementation of the SP-IV methodology
@@ -25,8 +28,10 @@ y_t = \beta' Y_t + u_t
 
 is estimated by regressing the impulse responses of ``y_t`` to the external
 shocks ``Z`` on the impulse responses of ``Y_t`` to the same shocks, after
-residualising on lagged controls ``X_{t-1}``. This bypasses the weak-instrument
-problem that afflicts standard 2SLS with distributed-lag instruments.
+residualising on lagged controls ``X_{t-1}``. Relative to 2SLS with distributed
+lags of shocks as instruments, this imposes weaker exogeneity requirements and can
+improve efficiency and increase effective instrument strength; instruments can still
+be weak, hence the weak-IV test and robust confidence sets.
 
 ## Installation
 

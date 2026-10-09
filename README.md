@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/andrerecio/SystemProjectionsIV.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/andrerecio/SystemProjectionsIV.jl)
 [![Aqua QA](https://juliatesting.github.io/Aqua.jl/dev/assets/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
-A Julia implementation of the **System Projections IV (SP-IV)** estimator of Lewis & Mertens (2024). SP-IV identifies structural macroeconomic relationships (such as the Phillips Curve) by exploiting external instruments through impulse responses rather than raw variables, conditioning on a rich set of predetermined controls so that many lags of instruments can be used without losing identifying power.
+A Julia implementation of the **System Projections IV (SP-IV)** estimator of Lewis & Mertens (2024). SP-IV identifies structural macroeconomic relationships (such as the Phillips Curve) by regressing impulse responses to external instruments on each other, estimated with local projections or VARs. Because identification comes from the responses at multiple horizons, a rich set of lagged controls can be included — so only contemporaneous and lead exogeneity of the instruments is required — without shrinking the instruments' explanatory power to that of the contemporaneous shock, as happens in IV with distributed lags of shocks as instruments.
 
 > **Status:** alpha, under active development. The API is not yet stable.
 
@@ -94,13 +94,13 @@ The structural equation
 y_t = β' Y_t + u_t
 ```
 
-is estimated by regressing the **impulse responses** of `y_t` to the external shocks `Z` on the impulse responses of `Y_t` to the same shocks, after residualising on lagged controls `X_{t-1}`. This bypasses the weak-instrument problem that afflicts standard 2SLS with distributed-lag instruments. The canonical empirical application is the Phillips Curve, where `y_t = π_t`, `Y_t = (π_{t-1}, E_t π_{t+1}, gap_t)`, and `Z_t` is a vector of monetary-policy shocks.
+is estimated by regressing the **impulse responses** of `y_t` to the external shocks `Z` on the impulse responses of `Y_t` to the same shocks, after residualising on lagged controls `X_{t-1}`. Relative to 2SLS with distributed lags of shocks as instruments, this imposes weaker exogeneity requirements and can improve efficiency and increase effective instrument strength. Instruments can still be weak, hence the weak-IV test and robust confidence sets below. The motivating application is the hybrid New Keynesian Phillips Curve, `y_t = π_t`, `Y_t = (π_{t-1}, π^e_{t+1}, gap_t)`, instrumented with external shocks such as monetary-policy shocks (the paper's U.S. application uses the Angeletos et al. (2020) main business-cycle shock).
 
 ## Inference
 
-- **Strong identification.** Sandwich asymptotic variance with no HAR adjustment (lagged controls absorb the autocorrelation); normal confidence intervals always reported.
-- **Weak identification.** A bias-based first-stage test (bias tolerance `tau`, default `0.10`; size `1 − level`) with a conservative (moment-matched) critical value flags weak instruments. Robust confidence sets are available via either the Anderson–Rubin (`robust = :AR`, default) or Kleibergen LM (`robust = :KLM`) statistic, computed by grid search with bisection-refined endpoints. A bound of `±Inf` means the set reaches the edge of the search region; under weak instruments pass an explicit range, e.g. `grid = (-5, 5)`, since the default `β̂ ± 10·se` relies on the strong-identification standard error.
-- **IRFs.** Responses to a one-standard-deviation shock to the (symmetrically whitened) instruments, with Newey–West HAC standard errors from a delta-method influence function (a package choice — the paper reports point IRFs) and a fixed (`hac = :fixed`, default) or automatic (`:neweywest` / `:andrews`) bandwidth.
+- **Strong identification.** Sandwich asymptotic variance (eqs. 18–19) with normal confidence intervals. No HAR adjustment is needed *when* the controls include enough lags to make the residualised instrument `z⊥` serially uncorrelated; with the default intercept-only controls this requires a serially uncorrelated shock series, so add `xlags`/`X` for a persistent instrument.
+- **Weak identification.** A bias-based first-stage test (bias tolerance `tau`, default `0.10`; size `1 − level`) with a conservative (moment-matched) critical value flags weak instruments. Robust confidence sets are available via either the Anderson–Rubin (`robust = :AR`, default; `χ²` with `H·Nz` df) or Kleibergen KLM (`robust = :KLM`; `χ²` with `K` df, better power when `H·Nz > K`) statistic, computed by grid search with bisection-refined endpoints. A bound of `±Inf` means the set reaches the edge of the search region; under weak instruments pass an explicit range, e.g. `grid = (-5, 5)`, since the default `β̂ ± 10·se` relies on the strong-identification standard error.
+- **IRFs.** Responses to a one-standard-deviation shock to the (symmetrically whitened) instruments, with Newey–West HAC standard errors from a delta-method influence function (a package choice — IRF standard errors are not part of the paper's inference theory) and a fixed (`hac = :fixed`, default) or automatic (`:neweywest` / `:andrews`) bandwidth.
 
 See `docs/technical.md` for the full mathematical specification.
 
