@@ -1,5 +1,5 @@
 # Core types for SP-IV.
-# See docs/technical.md §3 for the math behind ForecastErrors and SPIVResult fields.
+# See docs/technical.md §3 for the math behind the SPIVResult fields.
 
 # ---------------------------------------------------------------------------
 # Spec hierarchy — used for type-based dispatch between the LP and VAR variants
@@ -21,77 +21,31 @@ abstract type AbstractSPIVSpec end
 
 Local-projections variant of SP-IV. Forecast errors are built by projecting the
 leads `y_{t+h}` and `Y_{t+h}` on the instruments `z_t` and lagged controls
-`X_{t-1}` via direct local projections (technical.md §3, eq. A.1). This is the
+`X_{t-1}` via direct local projections (technical.md §4.1, eq. A.1). This is the
 default spec for [`spiv`](@ref).
 """
 struct SPIVwithLP <: AbstractSPIVSpec end
 
 """
-    SPIVwithVAR() <: AbstractSPIVSpec
+    SPIVwithVAR(p = 1) <: AbstractSPIVSpec
 
 VAR variant of SP-IV (forecast-error route). A VAR(`p`) is fit by OLS on the
 stacked vector `[Y_t; y_t; z_t]` and the `h`-step forecast errors are formed
 from its companion MA representation (technical.md §4.2, eqs. A.2–A.3). The
 VAR's own lags replace the LP control-residualisation, so the controls `X`
-passed to [`spiv`](@ref) are ignored. Select the lag order with the `p` keyword.
+passed to [`spiv`](@ref) are ignored.
+
+```julia
+spiv(y, Y, z, SPIVwithVAR(4); H = 8)   # VAR(4) forecast errors
+```
 """
-struct SPIVwithVAR <: AbstractSPIVSpec end
+struct SPIVwithVAR <: AbstractSPIVSpec
+    p::Int
 
-# ---------------------------------------------------------------------------
-# ForecastErrors: residualised stacked matrices used by the estimator.
-# ---------------------------------------------------------------------------
-
-"""
-    ForecastErrors{T}
-
-Residualised, stacked forecast errors that feed the shared SP-IV estimator
-(technical.md §3). Built internally by the variant-specific first step; rarely
-constructed by hand. Time runs along the columns.
-
-# Fields
-- `y_perp::Matrix{T}`: outcome forecast errors, `H × T_eff`.
-- `Y_perp::Matrix{T}`: endogenous-regressor forecast errors, `(H·K) × T_eff`.
-- `Z_perp::Matrix{T}`: instrument forecast errors, `Nz × T_eff`.
-- `H::Int`: number of leads (horizons).
-- `K::Int`: number of endogenous regressors.
-- `Nz::Int`: number of instruments.
-
-    ForecastErrors(y_perp, Y_perp, Z_perp; H, K, Nz)
-
-Validate the row dimensions (`H`, `H·K`, `Nz`) and a common column count
-(`T_eff`), then store dense copies.
-"""
-struct ForecastErrors{T <: AbstractFloat}
-    y_perp::Matrix{T}
-    Y_perp::Matrix{T}
-    Z_perp::Matrix{T}
-    H::Int
-    K::Int
-    Nz::Int
-end
-
-function ForecastErrors(
-        y_perp::AbstractMatrix{T},
-        Y_perp::AbstractMatrix{T},
-        Z_perp::AbstractMatrix{T};
-        H::Int,
-        K::Int,
-        Nz::Int
-) where {T <: AbstractFloat}
-    size(y_perp, 1) == H ||
-        throw(DimensionMismatch("y_perp must have H = $H rows, got $(size(y_perp, 1))"))
-    size(Y_perp, 1) == H * K || throw(
-        DimensionMismatch("Y_perp must have H·K = $(H*K) rows, got $(size(Y_perp, 1))"),
-    )
-    size(Z_perp, 1) == Nz ||
-        throw(DimensionMismatch("Z_perp must have Nz = $Nz rows, got $(size(Z_perp, 1))"))
-    T_eff = size(y_perp, 2)
-    size(Y_perp, 2) == T_eff && size(Z_perp, 2) == T_eff || throw(
-        DimensionMismatch(
-        "y_perp, Y_perp, Z_perp must share the same number of columns (T_eff)",
-    ),
-    )
-    return ForecastErrors{T}(Matrix(y_perp), Matrix(Y_perp), Matrix(Z_perp), H, K, Nz)
+    function SPIVwithVAR(p::Integer = 1)
+        p ≥ 1 || throw(ArgumentError("VAR lag order p must be ≥ 1, got $p"))
+        return new(Int(p))
+    end
 end
 
 # ---------------------------------------------------------------------------
@@ -136,24 +90,34 @@ Anderson–Rubin (eq. 20) or Kleibergen KLM (eq. 21) statistic over a grid
 # Fields
 - `method::Symbol`: `:AR`, `:KLM`, or `:none` (the unpopulated stub).
 - `critical_value::T`: the chi-squared critical value used to accept grid points.
-- `bounds::Matrix{T}`: `K × 2` per-parameter `(lower, upper)`, the min/max over
-  the accepted set.
+- `bounds::Matrix{T}`: `K × 2` per-parameter `(lower, upper)`: the hull of the
+  accepted set, with each finite endpoint refined by bisection between the last
+  accepted and first rejected grid point. A bound of `-Inf`/`Inf` means the set
+  reaches the edge of the search grid — it is unbounded (or extends beyond the grid)
+  in that direction; widen `grid` in [`spiv`](@ref) to explore further. `NaN` when no
+  grid point is accepted (the set is empty, or narrower than the grid step). For
+  `K ≥ 2` the refinement runs along grid lines, so bounds are accurate to the grid
+  resolution.
 - `confidence_set::Matrix{T}`: the accepted grid points, `N_accepted × K`
   (rows = points, columns = parameters).
 - `degrees_freedom::Int`: degrees of freedom of the reference distribution.
+- `disconnected::Bool`: `true` when the accepted grid points form more than one
+  connected piece; `bounds` then span the gaps (a conservative hull) and the
+  pieces can be read off `confidence_set`.
 """
 struct RobustInference{T <: AbstractFloat}
-    method::Symbol            # :AR or :KLM (or :none for the Phase 1 stub)
+    method::Symbol            # :AR or :KLM (or :none for the unpopulated stub)
     critical_value::T
     bounds::Matrix{T}         # K × 2
     confidence_set::Matrix{T} # N_accepted × K
     degrees_freedom::Int
+    disconnected::Bool
 end
 
 function RobustInference{T}(K::Int) where {T <: AbstractFloat}
     bounds = fill(T(NaN), K, 2)
     cs = Matrix{T}(undef, 0, K)
-    return RobustInference{T}(:none, T(NaN), bounds, cs, 0)
+    return RobustInference{T}(:none, T(NaN), bounds, cs, 0, false)
 end
 
 # ---------------------------------------------------------------------------
@@ -169,9 +133,14 @@ A block of impulse responses with HAC standard errors and confidence bands
 - `N = 2` for the outcome IRF, shape `H × Nz`;
 - `N = 3` for the endogenous IRF, shape `H × K × Nz`.
 
+Row `i` is horizon `horizons(r)[i]`. Column `n` is the response to a one-standard-
+deviation shock to the `n`-th symmetrically whitened instrument
+`(Z⊥Z⊥'/T)^{-1/2} z⊥_t` (eq. 11); with a single instrument, a one-s.d. shock to `z⊥`.
+
 # Fields
 - `point::Array{T, N}`: point estimates.
-- `se::Array{T, N}`: Newey–West HAC standard errors.
+- `se::Array{T, N}`: Newey–West HAC standard errors (delta-method, accounting for
+  the estimated whitening matrix).
 - `lower::Array{T, N}`, `upper::Array{T, N}`: confidence-band endpoints.
 
 All four arrays share the same shape. Access these on an [`SPIVResult`](@ref) via
@@ -220,7 +189,8 @@ end
 
 The bundle returned by [`spiv`](@ref). All fields are concrete (no
 `Union{T, Nothing}`). It supports the StatsBase accessors `coef`, `vcov`,
-`stderror`, `confint`, `nobs`, `dof_residual`, and `residuals`.
+`stderror`, `confint`, `coeftable`, `coefnames`, `nobs`, `dof_residual`, and
+`residuals`.
 
 # Fields
 - `spec::S`: the variant tag ([`SPIVwithLP`](@ref) or [`SPIVwithVAR`](@ref)).
@@ -232,8 +202,11 @@ The bundle returned by [`spiv`](@ref). All fields are concrete (no
 - `robust::RobustInference{T}`: AR/KLM robust confidence set.
 - `irf_outcome::IRFBlock{T, 2}`: outcome IRF, `H × Nz`.
 - `irf_endogenous::IRFBlock{T, 3}`: endogenous IRF, `H × K × Nz`.
-- `H, K, Nz, Nx, T_eff::Int`: leads, endogenous regressors, instruments,
-  controls, and effective sample size.
+- `horizons::Vector{Int}`: the stacked horizons (`0:H-1` by default).
+- `level::T`: confidence level shared by `confint`, the robust set, and the IRF
+  bands.
+- `H, K, Nz, Nx, T_eff::Int`: number of horizons, endogenous regressors,
+  instruments, controls (the rank of the control matrix), and effective sample size.
 """
 struct SPIVResult{T <: AbstractFloat, S <: AbstractSPIVSpec}
     spec::S
@@ -244,6 +217,8 @@ struct SPIVResult{T <: AbstractFloat, S <: AbstractSPIVSpec}
     robust::RobustInference{T}
     irf_outcome::IRFBlock{T, 2}
     irf_endogenous::IRFBlock{T, 3}
+    horizons::Vector{Int}
+    level::T
     H::Int
     K::Int
     Nz::Int
@@ -261,13 +236,17 @@ function SPIVResult(
         K::Int,
         Nz::Int,
         Nx::Int,
-        T_eff::Int = size(residuals, 2)
+        T_eff::Int = size(residuals, 2),
+        horizons::AbstractVector{<:Integer} = 0:(H - 1),
+        level::Real = 0.95
 ) where {T <: AbstractFloat, S <: AbstractSPIVSpec}
     length(β) == K || throw(DimensionMismatch("β must have length K = $K"))
     size(vcov) == (K, K) || throw(DimensionMismatch("vcov must be K × K = $K × $K"))
     size(residuals, 1) == H || throw(DimensionMismatch("residuals must have H = $H rows"))
     size(residuals, 2) == T_eff ||
         throw(DimensionMismatch("residuals column count must match T_eff = $T_eff"))
+    length(horizons) == H ||
+        throw(DimensionMismatch("horizons must have length H = $H"))
     return SPIVResult{T, S}(
         spec,
         Vector(β),
@@ -277,6 +256,8 @@ function SPIVResult(
         RobustInference{T}(K),
         IRFBlock{T}(H, Nz),
         IRFBlock{T}(H, K, Nz),
+        collect(Int, horizons),
+        T(level),
         H,
         K,
         Nz,
@@ -287,7 +268,7 @@ end
 
 # ---------------------------------------------------------------------------
 # Accessors. StatsBase methods are extended explicitly; SP-IV-specific accessors
-# (horizon, weak_iv_test) live in the SystemProjectionsIV namespace.
+# (horizons, weak_iv_test, robust_inference, spec, irf) live in the SystemProjectionsIV namespace.
 # ---------------------------------------------------------------------------
 
 StatsBase.coef(r::SPIVResult) = r.β
@@ -296,8 +277,20 @@ StatsBase.nobs(r::SPIVResult) = r.T_eff
 StatsBase.dof_residual(r::SPIVResult) = r.T_eff - r.Nx - r.K
 StatsBase.residuals(r::SPIVResult) = r.residuals
 StatsBase.stderror(r::SPIVResult) = sqrt.(diag(r.vcov))
+StatsBase.coefnames(r::SPIVResult) = ["β[$k]" for k in 1:(r.K)]
 
-function StatsBase.confint(r::SPIVResult; level::Real = 0.95)
+"""
+    confint(r::SPIVResult; level = r.level) -> Matrix
+
+`K × 2` strong-identification (Wald) confidence intervals `β̂ ± z·se`, using normal
+critical values (the asymptotic theory of docs/technical.md §5.3). The default level
+is the one passed to [`spiv`](@ref). The Fieldhouse–Mertens MATLAB code uses
+Student-`t` quantiles with `dof_residual(r)` degrees of freedom instead; the
+difference vanishes with `T_eff`. Under weak instruments use
+[`robust_inference`](@ref).
+"""
+function StatsBase.confint(r::SPIVResult; level::Real = r.level)
+    0 < level < 1 || throw(ArgumentError("level must be in (0, 1), got $level"))
     α = 1 - level
     z = norminvcdf(1 - α / 2)
     se = StatsBase.stderror(r)
@@ -305,11 +298,33 @@ function StatsBase.confint(r::SPIVResult; level::Real = 0.95)
 end
 
 """
-    horizon(r::SPIVResult) -> Int
+    coeftable(r::SPIVResult; level = r.level) -> StatsBase.CoefTable
 
-Number of leads (horizons) `H` used in the estimation.
+Coefficient table (estimate, std. error, `z`, two-sided normal p-value, Wald
+confidence interval) under strong identification.
 """
-horizon(r::SPIVResult) = r.H
+function StatsBase.coeftable(r::SPIVResult; level::Real = r.level)
+    se = StatsBase.stderror(r)
+    z = r.β ./ se
+    p = 2 .* normccdf.(abs.(z))
+    ci = StatsBase.confint(r; level = level)
+    pct = @sprintf("%g", 100 * level)
+    return StatsBase.CoefTable(
+        [r.β, se, z, p, ci[:, 1], ci[:, 2]],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)", "Lower $pct%", "Upper $pct%"],
+        StatsBase.coefnames(r),
+        4,
+        3
+    )
+end
+
+"""
+    horizons(r::SPIVResult) -> Vector{Int}
+
+The horizons `h` stacked in the estimation (`0:H-1` unless a vector was passed as
+`H` to [`spiv`](@ref)).
+"""
+horizons(r::SPIVResult) = r.horizons
 
 """
     weak_iv_test(r::SPIVResult) -> WeakIVDiagnostic

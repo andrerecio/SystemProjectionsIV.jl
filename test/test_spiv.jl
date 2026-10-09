@@ -321,7 +321,7 @@ _runspiv(y, Y, Z, h) = spiv(y, Y, Z; H = h)
         Yc .+= 0.7 .* uc .+ 0.2 .* randn(Tc)
         yc = 0.5 .* Yc .+ uc
         r_lp = spiv(yc, Yc, εc; H = 4, xlags = 1)
-        r_var = spiv(yc, Yc, εc, SPIVwithVAR(); H = 4, p = 1)
+        r_var = spiv(yc, Yc, εc, SPIVwithVAR(1); H = 4)
         @test coef(r_lp)[1] ≈ coef(r_var)[1] atol = 0.1
     end
 
@@ -359,5 +359,174 @@ _runspiv(y, Y, Z, h) = spiv(y, Y, Z; H = h)
         keep = (p + 1):T
         r = spiv(yv[keep], Yv[keep], z[keep]; H = 2, X = lags(yv, p)[keep, :])
         @test r.Nx == 1 + p
+    end
+
+    # -------------------------------------------------------------------
+    # 10. lag / lags: integer (and Float32) input, and shifts at least as long
+    #     as the series (everything shifted out ⇒ all `default`).
+    # -------------------------------------------------------------------
+    @testset "lag / lags integer input and long shifts" begin
+        xi = [1, 2, 3, 4, 5]
+        @test isequal(lag(xi, 1), [NaN, 1.0, 2.0, 3.0, 4.0])
+        @test eltype(lag(xi, 1)) == Float64
+        @test isequal(lag(xi, -2), [3.0, 4.0, 5.0, NaN, NaN])
+        @test lag(xi, 0) == [1.0, 2.0, 3.0, 4.0, 5.0]
+        @test isequal(lags(xi, 2), lags(float.(xi), 2))
+        Mi = [1 10; 2 20; 3 30; 4 40]
+        @test isequal(lag(Mi, 1), lag(float.(Mi), 1))
+        @test isequal(lags(Mi, 2), lags(float.(Mi), 2))
+        @test eltype(lag(Float32[1, 2, 3], 1)) == Float32
+
+        x = [1.0, 2.0, 3.0, 4.0, 5.0]
+        for n in (5, 7, -5, -9)
+            out = lag(x, n)
+            @test length(out) == 5 && all(isnan, out)
+        end
+        @test lag(x, 5; default = 0.0) == zeros(5)
+        @test lag(xi, -6; default = -1.0) == fill(-1.0, 5)
+        L = lags(x, 6)
+        @test size(L) == (5, 6)
+        @test isequal(L[:, 4], lag(x, 4))
+        @test all(isnan, L[:, 5:6])
+
+        # integer lags straight into spiv ≡ their Float64 version (bit-identical)
+        Random.seed!(81)
+        T = 200
+        yv, Yv, z = randn(T), randn(T), randn(T)
+        w = rand(1:9, T)
+        @test coef(spiv(yv, Yv, z; H = 2, X = lags(w, 2))) ==
+              coef(spiv(yv, Yv, z; H = 2, X = lags(float.(w), 2)))
+    end
+
+    # -------------------------------------------------------------------
+    # 11. Horizon vectors: H = 0:H-1 as a vector is bit-identical to Int H; a
+    #     subset (e.g. 1:2:7, as Fieldhouse–Mertens' `sel_hors`) matches a
+    #     hand-stacked eq. (9) computation with explicit projections.
+    # -------------------------------------------------------------------
+    @testset "horizon vectors" begin
+        Random.seed!(31)
+        T = 300
+        Yv = randn(T, 2)
+        Zv = randn(T, 2) .+ 0.5 .* Yv
+        yv = Yv * [0.4, -0.2] .+ randn(T)
+
+        r_int = spiv(yv, Yv, Zv; H = 4)
+        for Hv in (0:3, [0, 1, 2, 3])
+            r_vec = spiv(yv, Yv, Zv; H = Hv)
+            @test coef(r_vec) == coef(r_int)
+            @test vcov(r_vec) == vcov(r_int)
+            @test residuals(r_vec) == residuals(r_int)
+            @test r_vec.irf_outcome.se == r_int.irf_outcome.se
+            @test r_vec.irf_endogenous.point == r_int.irf_endogenous.point
+            @test robust_inference(r_vec).bounds == robust_inference(r_int).bounds
+            @test weak_iv_test(r_vec).g_min == weak_iv_test(r_int).g_min
+            @test horizons(r_vec) == horizons(r_int) == [0, 1, 2, 3]
+        end
+
+        # _stack_leads with a horizon vector ≡ explicit indexing
+        hs = [1, 3, 5, 7]
+        S = SystemProjectionsIV._stack_leads(Yv, hs)
+        T_eff = T - 7
+        @test size(S) == (2 * 4, T_eff)
+        @test all(S[(k - 1) * 4 + i, t] == Yv[t + hs[i], k]
+        for k in 1:2, i in 1:4, t in 1:T_eff)
+        @test SystemProjectionsIV._stack_leads(Yv, 3) ==
+              SystemProjectionsIV._stack_leads(Yv, [0, 1, 2])
+
+        # subset 1:2:7 vs hand-stacked eq. (9)
+        r_sub = spiv(yv, Yv, Zv; H = 1:2:7)
+        @test horizons(r_sub) == hs
+        @test r_sub.H == 4
+        @test nobs(r_sub) == T_eff
+        @test size(residuals(r_sub)) == (4, T_eff)
+        @test size(r_sub.irf_outcome.point) == (4, 2)
+        H, K = 4, 2
+        Mx = Matrix{Float64}(I, T_eff, T_eff) .- 1 / T_eff        # intercept annihilator
+        yH = [yv[t + h] for h in hs, t in 1:T_eff] * Mx           # H × T_eff
+        YH = vcat([[Yv[t + h, k] for h in hs, t in 1:T_eff] for k in 1:K]...) * Mx
+        Zp = permutedims(Zv[1:T_eff, :]) * Mx
+        Pz = Zp' * ((Zp * Zp') \ Zp)
+        IH = Matrix{Float64}(I, H, H)
+        R = kron(Matrix{Float64}(I, K, K), vec(IH))
+        β9 = (R' * kron(YH * Pz * YH', IH) * R) \ (R' * vec(yH * Pz * YH'))
+        @test coef(r_sub) ≈ β9 rtol = 1e-9
+        @test residuals(r_sub) ≈ yH .- kron(β9', IH) * YH rtol = 1e-9
+
+        # horizons need not be evenly spaced
+        @test horizons(spiv(yv, Yv, Zv; H = [0, 2, 3, 9])) == [0, 2, 3, 9]
+
+        # invalid horizon specifications
+        for Hbad in (0, -1, Int[], [2, 1], [-1, 0, 1], [1, 1, 2])
+            @test_throws ArgumentError spiv(yv, Yv, Zv; H = Hbad)
+        end
+        @test_throws ArgumentError spiv(yv, Yv, Zv; H = [0, T])   # no observations left
+    end
+
+    # -------------------------------------------------------------------
+    # 12. Rank-deficient controls: dropped via pivoted QR with a warning; the
+    #     effective Nx is the rank, and estimates match the full-rank call.
+    # -------------------------------------------------------------------
+    @testset "rank-deficient controls" begin
+        Random.seed!(52)
+        T, H = 250, 3
+        yv, Yv, z = randn(T), randn(T), randn(T)
+        W = randn(T, 2)
+
+        r_ref = @test_logs spiv(yv, Yv, z; H = H)                 # no warning
+        r_dup = @test_logs (:warn, r"collinear") spiv(yv, Yv, z; H = H, X = ones(T))
+        @test r_dup.Nx == r_ref.Nx == 1
+        @test coef(r_dup) ≈ coef(r_ref) rtol = 1e-10
+        @test vcov(r_dup) ≈ vcov(r_ref) rtol = 1e-10
+        @test dof_residual(r_dup) == dof_residual(r_ref)
+        @test weak_iv_test(r_dup).g_min ≈ weak_iv_test(r_ref).g_min rtol = 1e-10
+
+        r_W = spiv(yv, Yv, z; H = H, X = W)
+        r_WW = @test_logs (:warn, r"dropped 1 redundant") spiv(
+            yv, Yv, z; H = H, X = hcat(W, 2 .* W[:, 1] .- W[:, 2]))
+        @test r_WW.Nx == r_W.Nx == 3
+        @test coef(r_WW) ≈ coef(r_W) rtol = 1e-10
+        @test robust_inference(r_WW).bounds ≈ robust_inference(r_W).bounds rtol = 1e-8
+    end
+
+    # -------------------------------------------------------------------
+    # 13. Trailing NaN padding (leads, e.g. a forward moving average built
+    #     with lag(y, -n)) is trimmed like the leading burn-in; interior NaN
+    #     still throws.
+    # -------------------------------------------------------------------
+    @testset "trailing NaN trimming" begin
+        Random.seed!(63)
+        T, H, p = 300, 3, 2
+        yv, Yv, z = randn(T), randn(T), randn(T)
+        yma = (yv .+ lag(yv, -1) .+ lag(yv, -2)) ./ 3              # last 2 rows NaN
+        @test all(isnan, yma[(T - 1):T]) && all(isfinite, yma[1:(T - 2)])
+
+        keep = 1:(T - 2)
+        r_auto = spiv(yma, Yv, z; H = H)
+        r_hand = spiv(yma[keep], Yv[keep], z[keep]; H = H)
+        @test coef(r_auto) == coef(r_hand)
+        @test vcov(r_auto) == vcov(r_hand)
+        @test r_auto.irf_outcome.point == r_hand.irf_outcome.point
+        @test nobs(r_auto) == (T - 2) - (H - 1)
+
+        # leading (lags in X) and trailing (leads in y) padding together
+        keep2 = (p + 1):(T - 2)
+        r_both = spiv(yma, Yv, z; H = H, X = lags(Yv, p))
+        r_both_h = spiv(yma[keep2], Yv[keep2], z[keep2]; H = H, X = lags(Yv, p)[keep2, :])
+        @test coef(r_both) == coef(r_both_h)
+        @test nobs(r_both) == length(keep2) - (H - 1)
+
+        # trailing padding in Z or X is trimmed too
+        z_pad = copy(z)
+        z_pad[(T - 3):T] .= NaN
+        @test coef(spiv(yv, Yv, z_pad; H = H)) ==
+              coef(spiv(yv[1:(T - 4)], Yv[1:(T - 4)], z[1:(T - 4)]; H = H))
+
+        # interior NaN (inside the trimmed span) is still a data error
+        y_hole = copy(yma)
+        y_hole[100] = NaN
+        @test_throws ArgumentError spiv(y_hole, Yv, z; H = H)
+        Y_hole = copy(Yv)
+        Y_hole[T - 5] = NaN
+        @test_throws ArgumentError spiv(yma, Y_hole, z; H = H)
     end
 end

@@ -60,7 +60,7 @@ end
 
         compact = sprint(show, res)
         @test occursin("SPIVResult", compact)
-        @test occursin("H=4", compact)
+        @test occursin("h=0:3", compact)
 
         pretty = sprint((io, x) -> show(io, MIME("text/plain"), x), res)
         @test occursin("System Projections IV", pretty)
@@ -72,6 +72,56 @@ end
         # summary prints the same table (plus a trailing newline), returns nothing.
         @test sprint(summary, res) == pretty * "\n"
         @test summary(devnull, res) === nothing
+
+        # level, horizons, and the stacked-horizon line
+        @test occursin("95% CI", pretty)
+        @test occursin("Robust (AR, 95%, df=4)", pretty)
+        @test occursin("horizons h=0:3 (H=4)", pretty)
+        @test !occursin("note:", pretty)                 # bounded, connected set
+
+        r90 = spiv(y, Y, Z; H = 1:2:7, level = 0.9, robust = :KLM)
+        p90 = sprint((io, x) -> show(io, MIME("text/plain"), x), r90)
+        @test occursin("90% CI", p90)
+        @test occursin("Robust (KLM, 90%, df=1)", p90)
+        @test occursin("horizons h=1:2:7 (H=4)", p90)
+        @test occursin("h=1:2:7", sprint(show, r90))
+        @test occursin("h=0,2,3", sprint(show, spiv(y, Y, Z; H = [0, 2, 3])))
+        @test occursin("h=5", sprint(show, spiv(y, Y, Z; H = [5])))
+
+        # VAR lag order is shown
+        rv = spiv(y, Y, Z, SPIVwithVAR(3); H = 4)
+        @test occursin("VAR(3)", sprint(show, rv))
+        @test occursin("vector autoregression (VAR(3))",
+            sprint((io, x) -> show(io, MIME("text/plain"), x), rv))
+
+        # ±Inf bounds come with a note
+        r_inf = spiv(y, Y, Z; H = 4, grid = (coef(res)[1], 5.0))
+        p_inf = sprint((io, x) -> show(io, MIME("text/plain"), x), r_inf)
+        @test occursin("-Inf", p_inf)
+        @test occursin("note: ±Inf", p_inf)
+    end
+
+    @testset "show: disconnected note" begin
+        # Weak-ish design (relevance 0.15) whose KLM set is disconnected.
+        Random.seed!(924)
+        T, H = 250, 4
+        a = 0.15 .* [0.8^h for h in 0:(H - 1)]
+        ε = randn(T)
+        u = 0.3 .* randn(T)
+        ν = 0.2 .* randn(T)
+        Y = zeros(T)
+        for t in 1:T
+            s = 0.0
+            for j in 0:(H - 1)
+                t - j ≥ 1 && (s += a[j + 1] * ε[t - j])
+            end
+            Y[t] = s + 0.8 * u[t] + ν[t]
+        end
+        y = 0.7 .* Y .+ u
+        r = spiv(y, Y, ε; H = H, robust = :KLM)
+        @test robust_inference(r).disconnected
+        p = sprint((io, x) -> show(io, MIME("text/plain"), x), r)
+        @test occursin("note: the set is disconnected", p)
     end
 
     # -------------------------------------------------------------------
@@ -109,7 +159,7 @@ end
         Y .+= 0.7 .* u .+ 0.2 .* randn(T)
         y = β .* Y .+ u
 
-        result = spiv(y, Y, ε; H = H, weak_iv = :AR)
+        result = spiv(y, Y, ε; H = H, robust = :AR)
 
         @test isfinite(coef(result)[1])
         @test coef(result)[1] ≈ β atol = 0.1

@@ -8,19 +8,22 @@
 # shared `_spiv_estimate`.
 
 # Fit a VAR(p) on the stacked observables W = [Y | y | z] (T × m, m = K+1+Nz), build the
-# h-step forecast errors X̂⊥_t(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j} (eq. A.3), and select rows:
+# h-step forecast errors X̂⊥_t(h) = Σ_{j=0}^h Â^{h-j} ê_{t+j} (eq. A.3) at the horizons
+# h ∈ hs, and select rows (H = length(hs)):
 #   ŷ⊥_H  (H × T_eff)   — the y-row across horizons
 #   Ŷ⊥_H  (HK × T_eff)  — the K Y-rows across horizons (variable-major, matching _stack_leads)
 #   Ẑ⊥    (Nz × T_eff)  — the z-rows of the one-step residual ê (= X̂⊥_t(0))
-# T_eff = (T − p) − (H − 1). Nx_eff = 1 + m·p (VAR regressors per equation) is the
+# T_eff = (T − p) − maximum(hs). Nx_eff = 1 + m·p (VAR regressors per equation) is the
 # effective control count used in the dof corrections.
 function _var_forecast_errors(
         yv::AbstractVector{Float64},
         Ym::AbstractMatrix{Float64},
         Zm::AbstractMatrix{Float64},
-        H::Int,
+        hs::AbstractVector{Int},
         p::Int
 )
+    H = length(hs)
+    hmax = maximum(hs)
     T = length(yv)
     K = size(Ym, 2)
     Nz = size(Zm, 2)
@@ -40,12 +43,12 @@ function _var_forecast_errors(
     lags3 = reshape(permutedims(A[2:end, :]), m, m, p)
     F = companion_form(lags3)                   # (m·p) × (m·p) companion matrix
 
-    # --- MA coefficients Φ_k = (F^k)[1:m, 1:m], k = 0,…,H-1 (Φ_0 = I) ----
-    Φ = Vector{Matrix{Float64}}(undef, H)
+    # --- MA coefficients Φ_k = (F^k)[1:m, 1:m], k = 0,…,max(hs) (Φ_0 = I) ----
+    Φ = Vector{Matrix{Float64}}(undef, hmax + 1)
     Φ[1] = Matrix{Float64}(I, m, m)
-    if H > 1
+    if hmax > 0
         Fpow = copy(F)                          # F^1
-        for k in 2:H
+        for k in 2:(hmax + 1)
             Φ[k] = Fpow[1:m, 1:m]
             Fpow = Fpow * F
         end
@@ -53,10 +56,10 @@ function _var_forecast_errors(
 
     # --- forecast errors (eq. A.3) and row selection ---------------------
     Te = size(ê, 1)                             # T - p
-    T_eff = Te - (H - 1)
+    T_eff = Te - hmax
     T_eff > 0 || throw(
         ArgumentError(
-        "VAR horizon/lags leave no observations: T - p - (H-1) = $T_eff ≤ 0 (T=$T, p=$p, H=$H)"),
+        "VAR horizon/lags leave no observations: T - p - max(h) = $T_eff ≤ 0 (T=$T, p=$p, max(h)=$hmax)"),
     )
 
     y_perp = Matrix{Float64}(undef, H, T_eff)
@@ -66,31 +69,34 @@ function _var_forecast_errors(
     tmp = Vector{Float64}(undef, m)
     for c in 1:T_eff
         Z_perp[:, c] .= @view ê[c, z_idx]       # h = 0 ⇒ X̂⊥(c,0) = ê_c
-        for h in 0:(H - 1)
+        for (i, h) in enumerate(hs)
             fill!(xh, 0.0)
             for j in 0:h
                 mul!(tmp, Φ[h - j + 1], @view ê[c + j, :])
                 xh .+= tmp
             end
-            y_perp[h + 1, c] = xh[y_idx]
+            y_perp[i, c] = xh[y_idx]
             for k in 1:K
-                Y_perp[(k - 1) * H + (h + 1), c] = xh[k]
+                Y_perp[(k - 1) * H + i, c] = xh[k]
             end
         end
     end
 
     return y_perp, Y_perp, Z_perp, T_eff, 1 + m * p
 end
+function _var_forecast_errors(yv::AbstractVector{Float64}, Ym::AbstractMatrix{Float64},
+        Zm::AbstractMatrix{Float64}, H::Int, p::Int)
+    _var_forecast_errors(yv, Ym, Zm, collect(0:(H - 1)), p)
+end
 
 # VAR variant of step 1 (dispatched). `X` (controls) is ignored — the VAR lags subsume it.
 function _forecast_errors(
-        ::SPIVwithVAR,
+        spec::SPIVwithVAR,
         yv::AbstractVector{Float64},
         Ym::AbstractMatrix{Float64},
         Xm::AbstractMatrix{Float64},
         Zm::AbstractMatrix{Float64},
-        H::Int,
-        p::Int
+        hs::AbstractVector{Int}
 )
-    return _var_forecast_errors(yv, Ym, Zm, H, p)
+    return _var_forecast_errors(yv, Ym, Zm, hs, spec.p)
 end

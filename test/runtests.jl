@@ -17,4 +17,5 @@ using SystemProjectionsIV
     include("test_irf.jl")
     include("test_show.jl")
     include("test_var.jl")
+    include("test_api.jl")
 end

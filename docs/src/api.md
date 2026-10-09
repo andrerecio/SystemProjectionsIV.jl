@@ -27,17 +27,24 @@ SPIVResult
 WeakIVDiagnostic
 RobustInference
 IRFBlock
-ForecastErrors
 ```
 
 ## Accessors
 
 The result supports the StatsBase accessors `coef`, `vcov`, `stderror`,
-`confint`, `nobs`, `dof_residual`, and `residuals`, plus the SP-IV-specific
-accessors below.
+`confint`, `coeftable`, `coefnames`, `nobs`, `dof_residual`, and `residuals`,
+re-exported so that `using SystemProjectionsIV` alone is enough. `confint` and
+`coeftable` default to the `level` passed to [`spiv`](@ref):
 
 ```@docs
-horizon
+confint(::SPIVResult)
+coeftable(::SPIVResult)
+```
+
+SP-IV-specific accessors:
+
+```@docs
+horizons
 weak_iv_test
 robust_inference
 spec
@@ -48,8 +55,9 @@ Base.summary(::IO, ::SPIVResult)
 ## Data helpers
 
 Utilities for building lagged-control matrices for the `X` keyword of
-[`spiv`](@ref). Both pad unavailable initial observations with `NaN`;
-[`spiv`](@ref) drops that burn-in from all inputs automatically.
+[`spiv`](@ref). Both pad unavailable observations with `NaN` (leading for lags,
+trailing for leads, `n < 0`); [`spiv`](@ref) drops that padding from all inputs
+automatically. Integer input is promoted to floating point.
 
 ```@docs
 lag

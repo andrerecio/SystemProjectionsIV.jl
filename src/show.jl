@@ -3,15 +3,24 @@
 # hand-formatted with Printf to avoid a PrettyTables dependency.
 
 _variant_name(::SPIVwithLP) = "local projections (LP)"
-_variant_name(::SPIVwithVAR) = "vector autoregression (VAR)"
+_variant_name(s::SPIVwithVAR) = "vector autoregression (VAR($(s.p)))"
+
+# Horizons as printed: a compact range when they are evenly spaced.
+function _horizons_str(hs::Vector{Int})
+    length(hs) == 1 && return string(hs[1])
+    step = hs[2] - hs[1]
+    all(==(step), diff(hs)) || return join(hs, ",")
+    return step == 1 ? "$(hs[1]):$(hs[end])" : "$(hs[1]):$(step):$(hs[end])"
+end
+_pct(level) = @sprintf("%g%%", 100 * level)
 
 function Base.show(io::IO, r::SPIVResult)
     print(
         io,
         "SPIVResult(",
         _variant_name(r.spec),
-        ", H=",
-        r.H,
+        ", h=",
+        _horizons_str(r.horizons),
         ", K=",
         r.K,
         ", Nz=",
@@ -32,9 +41,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::SPIVResult)
     println(io, "System Projections IV — ", _variant_name(r.spec))
     println(
         io,
-        "  horizons H=",
+        "  horizons h=",
+        _horizons_str(r.horizons),
+        " (H=",
         r.H,
-        ", K=",
+        "), K=",
         r.K,
         " endogenous, Nz=",
         r.Nz,
@@ -51,12 +62,12 @@ function Base.show(io::IO, ::MIME"text/plain", r::SPIVResult)
         "estimate",
         "std.err.",
         "z",
-        "95% CI")
+        _pct(r.level) * " CI")
     for k in 1:r.K
         zk = se[k] > 0 ? β[k] / se[k] : NaN
         @printf(io,
-            "  β[%-3d] %12.4f %10.4f %9.2f   [%.4f, %.4f]\n",
-            k,
+            "  %-8s %10.4f %10.4f %9.2f   [%.4f, %.4f]\n",
+            "β[$k]",
             β[k],
             se[k],
             zk,
@@ -71,13 +82,24 @@ function Base.show(io::IO, ::MIME"text/plain", r::SPIVResult)
         wk.critical_value,
         verdict,)
     if rb.method === :none || isempty(rb.confidence_set)
-        @printf(io, "Robust (%s): empty confidence set\n", String(rb.method))
+        @printf(io,
+            "Robust (%s): no accepted grid point (empty set, or narrower than the grid step)\n",
+            String(rb.method))
     else
-        print(io, "Robust (", String(rb.method), ", df=", rb.degrees_freedom, "):")
+        print(io, "Robust (", String(rb.method), ", ", _pct(r.level), ", df=",
+            rb.degrees_freedom, "):")
         for k in 1:r.K
             @printf(io, " β[%d]∈[%.4f, %.4f]", k, rb.bounds[k, 1], rb.bounds[k, 2])
         end
         println(io)
+        any(isinf, rb.bounds) &&
+            println(io,
+                "  note: ±Inf — the set reaches the edge of the search grid " *
+                "(unbounded or wider than the grid); widen `grid` to explore")
+        rb.disconnected &&
+            println(io,
+                "  note: the set is disconnected; bounds are its hull " *
+                "(pieces in robust_inference(r).confidence_set)")
     end
     print(
         io,

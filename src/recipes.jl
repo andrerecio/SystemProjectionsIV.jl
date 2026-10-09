@@ -7,7 +7,7 @@
 
 @recipe function f(r::SPIVResult; response = :outcome)
     blk = irf(r; response = response)   # validates `response`, selects the IRF block
-    h = 0:(r.H - 1)
+    h = r.horizons
 
     if response === :outcome
         layout := (1, r.Nz)

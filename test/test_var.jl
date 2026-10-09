@@ -21,7 +21,7 @@ function _dgp_var(T, β, seed)
 end
 
 # Top-level wrapper so @inferred sees a plain generic function.
-_runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
+_runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(p); H = h)
 
 @testset "spiv (VAR variant)" begin
 
@@ -31,10 +31,10 @@ _runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
     @testset "dispatch and shapes" begin
         T, β, H, p = 800, 0.5, 4, 1
         y, Y, Z = _dgp_var(T, β, 1)
-        res = spiv(y, Y, Z, SPIVwithVAR(); H = H, p = p)
+        res = spiv(y, Y, Z, SPIVwithVAR(p); H = H)
 
         @test res isa SPIVResult{Float64, SPIVwithVAR}
-        @test spec(res) === SPIVwithVAR()
+        @test spec(res) === SPIVwithVAR(p)
         T_eff = T - p - (H - 1)
         @test size(residuals(res)) == (H, T_eff)
         @test size(res.irf_outcome.point) == (H, 1)
@@ -50,13 +50,13 @@ _runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
         T, β = 4000, 0.7
         y, Y, Z = _dgp_var(T, β, 42)
 
-        rvar = spiv(y, Y, Z, SPIVwithVAR(); H = 4, p = 1)
+        rvar = spiv(y, Y, Z, SPIVwithVAR(1); H = 4)
         rlp = spiv(y, Y, Z; H = 4)
 
         @test coef(rvar)[1] ≈ β atol = 0.05
         @test coef(rvar)[1] ≈ coef(rlp)[1] atol = 0.05
         # higher lag order also runs and recovers β
-        rvar2 = spiv(y, Y, Z, SPIVwithVAR(); H = 4, p = 2)
+        rvar2 = spiv(y, Y, Z, SPIVwithVAR(2); H = 4)
         @test coef(rvar2)[1] ≈ β atol = 0.05
     end
 
@@ -97,32 +97,32 @@ _runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
         T, H, p = 500, 3, 1
         y, Y, Z = _dgp_var(T, 0.6, 21)
 
-        r_clean = @test_logs spiv(y, Y, Z, SPIVwithVAR(); H = H, p = p)
+        r_clean = @test_logs spiv(y, Y, Z, SPIVwithVAR(p); H = H)
 
         warn_msg = r"ignored with SPIVwithVAR"
         r_X = @test_logs (:warn, warn_msg) spiv(
-            y, Y, Z, SPIVwithVAR(); H = H, p = p, X = randn(T, 2))
+            y, Y, Z, SPIVwithVAR(p); H = H, X = randn(T, 2))
         @test_logs (:warn, warn_msg) spiv(
-            y, Y, Z, SPIVwithVAR(); H = H, p = p, intercept = false)
-        @test_logs (:warn, warn_msg) spiv(y, Y, Z, SPIVwithVAR(); H = H, p = p, xlags = 2)
+            y, Y, Z, SPIVwithVAR(p); H = H, intercept = false)
+        @test_logs (:warn, warn_msg) spiv(y, Y, Z, SPIVwithVAR(p); H = H, xlags = 2)
         # all three at once still produce a single warning
         r_all = @test_logs (:warn, warn_msg) spiv(
-            y, Y, Z, SPIVwithVAR(); H = H, p = p,
+            y, Y, Z, SPIVwithVAR(p); H = H,
             X = randn(T, 2), intercept = false, xlags = 2)
         @test coef(r_X) == coef(r_clean)
         @test coef(r_all) == coef(r_clean)
 
         # NaN-padded X is ignored wholesale — it neither errors nor trims.
         r_nanX = @test_logs (:warn, warn_msg) spiv(
-            y, Y, Z, SPIVwithVAR(); H = H, p = p, X = lags(vec(y), 4))
+            y, Y, Z, SPIVwithVAR(p); H = H, X = lags(vec(y), 4))
         @test coef(r_nanX) == coef(r_clean)
         @test nobs(r_nanX) == nobs(r_clean)
 
         # Burn-in in the observables themselves is trimmed like the LP variant.
         y_pad = copy(y)
         y_pad[1:2] .= NaN
-        r_pad = spiv(y_pad, Y, Z, SPIVwithVAR(); H = H, p = p)
-        r_cut = spiv(y[3:end], Y[3:end, :], Z[3:end, :], SPIVwithVAR(); H = H, p = p)
+        r_pad = spiv(y_pad, Y, Z, SPIVwithVAR(p); H = H)
+        r_cut = spiv(y[3:end], Y[3:end, :], Z[3:end, :], SPIVwithVAR(p); H = H)
         @test coef(r_pad) == coef(r_cut)
         @test nobs(r_pad) == (T - 2) - p - (H - 1)
     end
@@ -144,5 +144,41 @@ _runvar(y, Y, Z, h, p) = spiv(y, Y, Z, SPIVwithVAR(); H = h, p = p)
 
         @test @inferred(_var_forecast_errors(vec(y), Y, Z, 3, 1)) isa
               Tuple{Matrix{Float64}, Matrix{Float64}, Matrix{Float64}, Int, Int}
+    end
+
+    # -------------------------------------------------------------------
+    # 6. Horizon vectors: Int H ≡ 0:H-1 (bit-identical), and a horizon
+    #    subset selects rows of the contiguous forecast errors with the same
+    #    max horizon (hence the same T_eff); IRFs match row-wise too.
+    # -------------------------------------------------------------------
+    @testset "horizon subsets" begin
+        T, p = 600, 2
+        y, Y2, Z = _dgp_var(T, 0.6, 11)
+        Y = hcat(Y2, 0.5 .* Y2 .+ randn(T))                # K = 2
+        K = 2
+        hs = [1, 3, 4]
+        Hc = 5                                              # contiguous 0:4
+
+        fe_int = _var_forecast_errors(vec(y), Y, Z, Hc, p)
+        fe_vec = _var_forecast_errors(vec(y), Y, Z, collect(0:(Hc - 1)), p)
+        @test fe_int == fe_vec
+
+        yc, Yc, Zc, Tc, Nxc = fe_int
+        ys, Ys, Zs, Ts, Nxs = _var_forecast_errors(vec(y), Y, Z, hs, p)
+        rows = hs .+ 1
+        @test Ts == Tc == (T - p) - maximum(hs)
+        @test Nxs == Nxc
+        @test Zs ≈ Zc rtol = 1e-12
+        @test ys ≈ yc[rows, :] rtol = 1e-10
+        @test Ys ≈ Yc[vcat([(k - 1) * Hc .+ rows for k in 1:K]...), :] rtol = 1e-10
+
+        r_sub = spiv(y, Y, Z, SPIVwithVAR(p); H = hs)
+        r_con = spiv(y, Y, Z, SPIVwithVAR(p); H = Hc)
+        @test horizons(r_sub) == hs
+        @test nobs(r_sub) == nobs(r_con)
+        @test r_sub.irf_outcome.point ≈ r_con.irf_outcome.point[rows, :] rtol = 1e-10
+        @test r_sub.irf_outcome.se ≈ r_con.irf_outcome.se[rows, :] rtol = 1e-10
+        @test r_sub.irf_endogenous.point ≈ r_con.irf_endogenous.point[rows, :, :] rtol = 1e-10
+        @test coef(spiv(y, Y, Z, SPIVwithVAR(p); H = 0:(Hc - 1))) == coef(r_con)
     end
 end

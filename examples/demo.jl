@@ -9,8 +9,7 @@
 # every section can be sanity-checked against the truth. Nothing here is part of
 # the package — it is a demonstration / exploration script.
 
-using SystemProjectionsIV
-using StatsBase: coef, vcov, stderror, confint, nobs, dof_residual, residuals
+using SystemProjectionsIV       # re-exports coef, stderror, confint, nobs, ...
 using Random
 using Printf
 
@@ -23,9 +22,9 @@ section(title) = (println(); println("="^72); println("  ", title); println("="^
 function print_coef_table(res; truth = nothing)
     β = coef(res)
     se = stderror(res)
-    ci = confint(res)                       # K × 2, 95%
+    ci = confint(res)                       # K × 2, at res.level (default 0.95)
     @printf("  %-6s %10s %10s %9s   %-20s\n", "param", "estimate", "std.err.", "z",
-        "95% CI")
+        @sprintf("%g%% CI", 100 * res.level))
     for k in eachindex(β)
         z = β[k] / se[k]
         @printf("  β[%d]   %10.4f %10.4f %9.2f   [%7.4f, %7.4f]\n",
@@ -51,17 +50,21 @@ function print_robust(res)
     for k in 1:size(r.bounds, 1)
         @printf("  β[%d] robust set ∈ [%7.4f, %7.4f]\n", k, r.bounds[k, 1], r.bounds[k, 2])
     end
+    any(isinf, r.bounds) && println("  (±Inf: the set reaches the edge of the search grid)")
+    r.disconnected &&
+        println("  (disconnected: bounds are the hull of the accepted pieces)")
 end
 
 function print_outcome_irf(res)
     blk = irf(res)                          # H × Nz IRFBlock
     H, Nz = size(blk.point)
+    hs = horizons(res)                      # row i ↔ horizon hs[i]
     println("  outcome IRF (H × Nz = $H × $Nz):  point [lower, upper] (se)")
     for n in 1:Nz
         println("   instrument $n:")
         for h in 1:H
             @printf("    h=%d  %8.4f  [%7.4f, %7.4f]  (se %.4f)\n",
-                h - 1, blk.point[h, n], blk.lower[h, n], blk.upper[h, n], blk.se[h, n])
+                hs[h], blk.point[h, n], blk.lower[h, n], blk.upper[h, n], blk.se[h, n])
         end
     end
 end
@@ -69,12 +72,13 @@ end
 function print_endogenous_irf(res)
     blk = irf(res; response = :endogenous)  # H × K × Nz IRFBlock
     H, K, Nz = size(blk.point)
+    hs = horizons(res)
     println("  endogenous IRF (H × K × Nz = $H × $K × $Nz):  point (se)")
     for n in 1:Nz, k in 1:K
 
         println("   instrument $n → endogenous Y[$k]:")
         for h in 1:H
-            @printf("    h=%d  %8.4f  (se %.4f)\n", h - 1, blk.point[h, k, n],
+            @printf("    h=%d  %8.4f  (se %.4f)\n", hs[h], blk.point[h, k, n],
                 blk.se[h, k, n])
         end
     end
@@ -135,12 +139,22 @@ res_ctrl = spiv(y, Y, Z; H = H, xlags = 4)
 @printf("\n  with xlags = 4:  β̂ = %.4f  (T_eff = %d, Nx = %d)\n",
     coef(res_ctrl)[1], nobs(res_ctrl), res_ctrl.Nx)
 
+# H may also be a vector of horizons (e.g. 3:4:59 as in Fieldhouse & Mertens), and
+# `level` sets the Wald CI, robust set, and IRF bands at once.
+res_sub = spiv(y, Y, Z; H = [0, 2, 3], level = 0.90)
+@printf("  with H = [0, 2, 3], level = 0.90:  β̂ = %.4f, horizons = %s\n",
+    coef(res_sub)[1], string(horizons(res_sub)))
+println()
+println("  coeftable (StatsBase):")
+show(stdout, MIME("text/plain"), coeftable(res_sub))
+println()
+
 # ---------------------------------------------------------------------------
 # 3. VAR variant — same data, compare β̂ to LP (Phase 5b: should be comparable).
 # ---------------------------------------------------------------------------
 
-section("3. VAR variant — spiv(y, Y, Z, SPIVwithVAR(); H, p)")
-res_var = spiv(y, Y, Z, SPIVwithVAR(); H = H, p = 1)
+section("3. VAR variant — spiv(y, Y, Z, SPIVwithVAR(p); H)")
+res_var = spiv(y, Y, Z, SPIVwithVAR(1); H = H)
 print_coef_table(res_var; truth = β_true)
 @printf("\n  LP  β̂ = %.4f\n  VAR β̂ = %.4f   (difference %.4f)\n",
     coef(res_lp)[1], coef(res_var)[1], abs(coef(res_lp)[1] - coef(res_var)[1]))
@@ -164,13 +178,22 @@ print_weak_iv(res_weak)
 # ---------------------------------------------------------------------------
 
 section("5. Robust inference — robust_inference(res), AR vs KLM")
-println(" Anderson–Rubin (weak_iv = :AR):")
-res_ar = spiv(y, Y, Z; H = H, weak_iv = :AR)
+println(" Anderson–Rubin (robust = :AR):")
+res_ar = spiv(y, Y, Z; H = H, robust = :AR)
 print_robust(res_ar)
 
-println("\n Kleibergen LM (weak_iv = :KLM):")
-res_klm = spiv(y, Y, Z; H = H, weak_iv = :KLM)
+println("\n Kleibergen LM (robust = :KLM):")
+res_klm = spiv(y, Y, Z; H = H, robust = :KLM)
 print_robust(res_klm)
+
+# Under weak instruments the default search region β̂ ± 10·se (built from the
+# unreliable strong-identification se) can be too narrow: pass an explicit range.
+println("\n Weak design, KLM, default grid (β̂ ± 10·se):")
+print_robust(spiv(yw, Yw, Zw; H = H, robust = :KLM))
+println("\n Weak design, KLM, grid = (-10, 10):")
+print_robust(spiv(yw, Yw, Zw; H = H, robust = :KLM, grid = (-10, 10)))
+println("\n Weak design, AR, grid = (-10, 10):")
+print_robust(spiv(yw, Yw, Zw; H = H, robust = :AR, grid = (-10, 10)))
 
 # ---------------------------------------------------------------------------
 # 6. Impulse responses — outcome (H×Nz) and endogenous (H×K×Nz) with HAC bands.

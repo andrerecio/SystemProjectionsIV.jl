@@ -473,6 +473,7 @@ OUTPUT: β̂, V̂_β, weak-IV test g, robust statistics AR(b), K(b)
 
 4.  WEAK-INSTRUMENT TEST (Proposition 7)
     Ŵ₂  ←  v̂⊥_H v̂⊥'_H / T   with v̂⊥_H = Ŷ⊥_H − Π̂ Ẑ⊥
+         (implementation: dof-corrected divisor T − N_x − N_z, as in Fieldhouse–Mertens)
     Φ̂   ←  R'(Ŵ₂ ⊗ I_H) R
     g    ←  N_z⁻¹ mineval{ Φ̂⁻¹⸍² (Ŷ⊥_H P_Ẑ⊥ Ŷ⊥'_H) Φ̂⁻¹⸍² }
     compare to Imhof-bounding critical value at (τ, α)

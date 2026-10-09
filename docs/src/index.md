@@ -40,7 +40,7 @@ Pkg.add(url = "https://github.com/andrerecio/SystemProjectionsIV.jl")
 ## Quick start
 
 ```@example quickstart
-using SystemProjectionsIV, StatsBase, Random
+using SystemProjectionsIV, Random
 
 # Simulate a small SP-IV design: y_t = β·Y_t + u_t, where Y responds to an
 # external instrument ε through a known impulse response and is endogenous (Y
@@ -59,19 +59,24 @@ y = β .* Y .+ u
 
 # y outcome, Y endogenous regressor(s), ε instrument(s); vectors or matrices
 # both work, and an intercept is included by default.
-result = spiv(y, Y, ε; H = H, weak_iv = :AR)
+result = spiv(y, Y, ε; H = H, robust = :AR)
 ```
 
 The returned [`SPIVResult`](@ref) carries the structural estimate, its sandwich
 covariance under strong identification, residuals, the weak-IV diagnostic, the
-robust (AR or KLM) confidence set, and the implied IRFs with HAC standard errors:
+robust (AR or KLM) confidence set, and the implied IRFs with HAC standard errors.
+The StatsBase accessors are re-exported, so no extra `using` is needed:
 
 ```@example quickstart
 coef(result)            # β̂
 ```
 
 ```@example quickstart
-confint(result)         # strong-identification 95% CI
+confint(result)         # strong-identification CI at `level` (default 0.95)
+```
+
+```@example quickstart
+coeftable(result)
 ```
 
 ```@example quickstart
@@ -84,10 +89,12 @@ irf(result).point       # outcome IRF point estimates (H × Nz)
 
 `summary(result)` prints the full estimation table, and lagged controls are one
 keyword away — `spiv(y, Y, ε; H = H, xlags = 4)` conditions on four lags of all
-the variables, with the burn-in sample adjustment handled automatically.
+the variables, with the NaN padding of lags and leads dropped automatically.
+`H = 8` stacks horizons `0:7`; pass a vector such as `H = 3:4:59` to stack a
+subset.
 
-See the [Guide](@ref) for the LP and VAR variants, weak-instrument-robust
-inference, and IRF options, and the [API](@ref) for the full reference. The
+See the [Guide](@ref) for choosing horizons, the LP and VAR variants, controls,
+weak-instrument-robust inference, and IRF options, and the [API](@ref) for the full reference. The
 complete mathematical specification lives in `docs/technical.md` in the
 repository.
 

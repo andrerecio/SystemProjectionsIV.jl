@@ -207,6 +207,53 @@ Second ergonomics pass for the applied-economist audience, all additive:
 **Exit criteria:** equivalence tests bit-identical ✅; `Pkg.test()` green ✅; docs build
 clean ✅.
 
+### Phase 5e — Fieldhouse–Mertens audit fixes (v0.3.0) ✅
+
+Audit of `src/` against the Fieldhouse–Mertens MATLAB SP-IV code (MIT-licensed,
+vendored under `docs/ext/fieldhouse_mertens/`; `Make_Table_1.m` is canonical).
+Breaking API changes while the package is unregistered.
+
+- [x] Keyword renames: `weak_iv` → `robust`, `ξ` → `tau`, `grid_scale` → `grid`,
+  `α` → `level` (confidence level, default 0.95). `level` drives `confint`/`coeftable`
+  (stored as `r.level`), the robust set, and the IRF bands; the weak-IV test runs at
+  size `1 − level`.
+- [x] `grid`: a number `c` (`β̂ ± c·se`, default 10), a `(lo, hi)` tuple, or a `K × 2`
+  matrix. `grid_length = nothing` ⇒ 201 (`K = 1`), 101 (`K = 2`), 31 (`K ≥ 3`).
+- [x] Robust sets: finite endpoints refined by bisection (50 iterations, cf. the `fzero`
+  step of `run_SPIV_total`); bounds touching the grid edge reported as `±Inf`; new
+  `RobustInference.disconnected` flag (KLM disconnected sets reported as the hull + a
+  note); KLM's `b`-invariant pieces precomputed once per inversion.
+- [x] Horizon subsets: `H` accepts an `Int` (`0:H-1`) or a strictly increasing vector of
+  horizons `≥ 0` (e.g. `3:4:59`, F–M `sel_hors`), stored as `r.horizons`;
+  `horizon(r)` replaced by `horizons(r)::Vector{Int}`; LP and VAR paths both honour it.
+- [x] `SPIVwithVAR(p = 1)`: the lag order is a field of the spec; the `p` kwarg is gone.
+- [x] IRF SEs: delta-method influence function accounting for the estimated whitening
+  matrix `S^{-1/2}`; `:fixed` HAC bandwidth uses the true horizon (`hs[i] + 1`).
+  Documented as a package choice (F–M and the paper report point IRFs only).
+- [x] Controls: collinear columns handled by a column-scaled pivoted QR with a `@warn`,
+  `Nx` = rank; instruments spanned by the controls or collinear with each other, and
+  `H > T_eff − Nx − Nz` (singular AR/KLM weighting matrix), throw `ArgumentError`.
+- [x] Sample handling: leading **and** trailing NaN padding trimmed (forward
+  transforms via `lag(y, -n)`); interior NaN still errors. `lag`/`lags` accept integer
+  input; `abs(n) ≥ length` returns all-default.
+- [x] `Ŵ₂` divisor `T − Nx − Nz` (F–M `SigvH`) noted in `docs/technical.md` §9.
+- [x] Accessors: `coeftable`/`coefnames` methods; `coef`, `vcov`, `stderror`,
+  `confint`, `coeftable`, `coefnames`, `nobs`, `dof_residual`, `residuals` re-exported
+  from StatsBase. `ForecastErrors` type removed (unused).
+- [x] `show` prints the level, the horizons, `±Inf`/disconnected notes, and `VAR(p)`.
+- [x] Decisions recorded: Wald CIs keep normal quantiles (F–M uses `t`; documented in
+  `confint`); default `xlags` stays 0 (documented under serial correlation).
+- [x] README, docs (`index.md`, `guide.md`, `api.md`), and `examples/` updated to the
+  new API; guide sections on horizons, robust sets, serial correlation, forward
+  transforms, and IRF units/SEs.
+- [x] Bump `version` in `Project.toml` to `0.3.0` (tagging left to the user).
+
+**Exit criteria:** point estimates, sandwich vcov, `g_min`, and the KLM statistic match
+the MATLAB-faithful port of `Make_Table_1.m` (incl. horizon subsets) to machine
+precision — Wald CIs differ by design (normal vs `t` quantiles, documented); robust-set
+and IRF-band Monte Carlo coverage ≈ nominal; `Pkg.test()` green; docs build clean;
+`examples/demo.jl` runs.
+
 ### Phase 5b' — VAR-IRF restriction (route B, deferred / experimental)
 
 Not implemented; under-specified in-repo and unverifiable. Would additionally:

@@ -24,14 +24,16 @@ Create lagged version of vector `x` by `n` periods.
 # Examples
 ```julia
 x = [1, 2, 3, 4, 5]
-lag(x, 1)  # [NaN, 1, 2, 3, 4]
-lag(x, 2)  # [NaN, NaN, 1, 2, 3]
+lag(x, 1)   # [NaN, 1.0, 2.0, 3.0, 4.0]
+lag(x, -2)  # [3.0, 4.0, 5.0, NaN, NaN]  (lead)
 ```
 """
 function lag(x::AbstractVector{T}, n::Int; default = T(NaN)) where {T <: AbstractFloat}
     len = length(x)
     if n == 0
         return copy(x)
+    elseif abs(n) ≥ len   # shifted entirely out of the sample
+        return fill(T(default), len)
     elseif n > 0  # Positive lag
         result = Vector{T}(undef, len)
         result[1:n] .= default
@@ -49,6 +51,9 @@ end
 function lag(X::AbstractMatrix{T}, n::Int; default = T(NaN)) where {T <: AbstractFloat}
     return hcat([lag(col, n; default = default) for col in eachcol(X)]...)
 end
+
+# Integer (or other Real) data are promoted to floating point so NaN padding fits.
+lag(x::AbstractVecOrMat{<:Real}, n::Int; kw...) = lag(float.(x), n; kw...)
 
 # Data-space analogue of gragusa's `lags` formula term
 # (docs/ext/gragusa/Regress.jl/src/utils/formula.jl, exported by LocalProjections.jl):
@@ -70,6 +75,7 @@ function lags(
     p ≥ 1 || throw(ArgumentError("p must be ≥ 1, got $p"))
     return hcat([lag(x, n; default = default) for n in 1:p]...)
 end
+lags(x::AbstractVecOrMat{<:Real}, p::Int; kw...) = lags(float.(x), p; kw...)
 
 """
     create_lags(X::AbstractMatrix{T}, p::Int) where T

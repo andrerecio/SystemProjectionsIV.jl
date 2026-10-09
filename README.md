@@ -24,7 +24,7 @@ Pkg.add(url = "https://github.com/andrerecio/SystemProjectionsIV.jl")
 ## Quick start
 
 ```julia
-using SystemProjectionsIV, StatsBase, Random
+using SystemProjectionsIV, Random
 
 # Simulate a small SP-IV design: y_t = β·Y_t + u_t, where Y responds to an
 # external instrument ε through a known impulse response and is endogenous (Y
@@ -43,25 +43,30 @@ y = β .* Y .+ u
 
 # y outcome, Y endogenous regressor(s), ε instrument(s); vectors or matrices
 # both work, and an intercept is included by default.
-result = spiv(y, Y, ε; H = H, weak_iv = :AR)
+result = spiv(y, Y, ε; H = H, robust = :AR)
 
 result                  # pretty summary: β̂, weak-IV verdict, robust set, IRF shapes
 summary(result)         # the same table, R-style
 coef(result)            # β̂
-confint(result)         # strong-identification 95% CI
+confint(result)         # strong-identification CI at `level` (default 0.95)
+coeftable(result)       # estimate, std. error, z, p-value, CI
 weak_iv_test(result)    # g statistic, critical value, is_weak
 robust_inference(result)            # AR confidence set + per-parameter bounds
+horizons(result)                    # stacked horizons, here 0:7
 irf(result).point                   # outcome IRF point estimates (H × Nz)
 irf(result; response = :endogenous) # endogenous-regressor IRFs (H × K × Nz)
 ```
 
-`spiv` returns an `SPIVResult` carrying the structural estimate β̂, its sandwich covariance under strong identification, residuals, weak-IV diagnostics, robust (AR or KLM) confidence sets, and the implied IRFs with HAC standard errors. Pass `hac = :neweywest` (or `:andrews`) for automatic-bandwidth Newey–West IRF standard errors instead of the default fixed lag truncation. With `Plots` loaded, `plot(result)` draws the outcome IRF bands (`plot(result; response = :endogenous)` for the endogenous IRFs).
+The StatsBase accessors (`coef`, `vcov`, `stderror`, `confint`, `coeftable`, `coefnames`, `nobs`, `dof_residual`, `residuals`) are re-exported, so `using SystemProjectionsIV` alone is enough.
 
-Controls enter through keywords, with the sample adjusted automatically (Stata/R-style): leading rows containing NaN — the burn-in that the exported `lag`/`lags` helpers produce — are dropped from every input. `xlags = p` controls for `p` lags of all the variables (the same information set as the VAR variant), and `X = ...` adds arbitrary extra columns beyond the automatic intercept (`intercept = false` drops the constant):
+`spiv` returns an `SPIVResult` carrying the structural estimate β̂, its sandwich covariance under strong identification, residuals, weak-IV diagnostics, robust (AR or KLM) confidence sets, and the implied IRFs with HAC standard errors. A single `level` keyword (default `0.95`) sets the Wald intervals, the robust set, and the IRF bands. `H = 8` stacks horizons `0:7`; a vector stacks exactly those horizons (e.g. `H = 3:4:59`, as in Fieldhouse & Mertens). Pass `hac = :neweywest` (or `:andrews`) for automatic-bandwidth Newey–West IRF standard errors instead of the default fixed lag truncation. With `Plots` loaded, `plot(result)` draws the outcome IRF bands (`plot(result; response = :endogenous)` for the endogenous IRFs).
+
+Controls enter through keywords, with the sample adjusted automatically (Stata/R-style): leading and trailing rows containing NaN — the padding that the exported `lag`/`lags` helpers produce for lags and leads — are dropped from every input. The default controls are intercept-only (`xlags = 0`), which suits a serially uncorrelated shock series as instrument. `xlags = p` controls for `p` lags of all the variables (the same information set as `SPIVwithVAR(p)`), and `X = ...` adds arbitrary extra columns beyond the automatic intercept (`intercept = false` drops the constant; collinear columns are dropped with a warning):
 
 ```julia
 result = spiv(y, Y, ε; H = H, xlags = 4)             # lags of [y Y ε] as controls
 result = spiv(y, Y, ε; H = H, X = lags(Y, 4))        # your own lagged controls
+result = spiv(y, Y, ε, SPIVwithVAR(4); H = H)        # VAR(4) forecast errors
 ```
 
 ## Examples
@@ -94,14 +99,15 @@ is estimated by regressing the **impulse responses** of `y_t` to the external sh
 ## Inference
 
 - **Strong identification.** Sandwich asymptotic variance with no HAR adjustment (lagged controls absorb the autocorrelation); normal confidence intervals always reported.
-- **Weak identification.** A bias-based first-stage test with a conservative (moment-matched) critical value flags weak instruments. Robust confidence sets are available via either the Anderson–Rubin (`weak_iv = :AR`) or Kleibergen LM (`weak_iv = :KLM`) statistic, computed by grid search.
-- **IRFs.** Newey–West HAC standard errors on the implied outcome and endogenous impulse responses, with a fixed (`hac = :fixed`, default) or automatic (`:neweywest` / `:andrews`) bandwidth.
+- **Weak identification.** A bias-based first-stage test (bias tolerance `tau`, default `0.10`; size `1 − level`) with a conservative (moment-matched) critical value flags weak instruments. Robust confidence sets are available via either the Anderson–Rubin (`robust = :AR`, default) or Kleibergen LM (`robust = :KLM`) statistic, computed by grid search with bisection-refined endpoints. A bound of `±Inf` means the set reaches the edge of the search region; under weak instruments pass an explicit range, e.g. `grid = (-5, 5)`, since the default `β̂ ± 10·se` relies on the strong-identification standard error.
+- **IRFs.** Responses to a one-standard-deviation shock to the (symmetrically whitened) instruments, with Newey–West HAC standard errors from a delta-method influence function (a package choice — the paper reports point IRFs) and a fixed (`hac = :fixed`, default) or automatic (`:neweywest` / `:andrews`) bandwidth.
 
 See `docs/technical.md` for the full mathematical specification.
 
 ## References
 
 - Lewis, D. J., & Mertens, K. (2024). *Dynamic Identification Using System Projections on Instrumental Variables*. Federal Reserve Bank of Dallas Working Paper No. 2204 (revised July 2024). [doi:10.24149/wp2204r3](https://doi.org/10.24149/wp2204r3)
+- Fieldhouse, A. J., & Mertens, K. *The Returns to Government R&D: Evidence from U.S. Appropriations Shocks.* Its MIT-licensed MATLAB SP-IV code (vendored under `docs/ext/fieldhouse_mertens/`) is the implementation reference for this package.
 
 If you use this package, please cite the paper and the package — see [`CITATION.bib`](CITATION.bib).
 

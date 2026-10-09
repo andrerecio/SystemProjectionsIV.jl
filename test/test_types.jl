@@ -10,45 +10,14 @@ using StatsBase
         @test SPIVwithVAR() isa AbstractSPIVSpec
     end
 
-    @testset "ForecastErrors" begin
-        H, K, Nz, T_eff = 5, 2, 3, 100
-        y_perp = randn(H, T_eff)
-        Y_perp = randn(H * K, T_eff)
-        Z_perp = randn(Nz, T_eff)
-
-        fe = ForecastErrors(y_perp, Y_perp, Z_perp; H = H, K = K, Nz = Nz)
-
-        @test fe isa ForecastErrors{Float64}
-        @test size(fe.y_perp) == (H, T_eff)
-        @test size(fe.Y_perp) == (H * K, T_eff)
-        @test size(fe.Z_perp) == (Nz, T_eff)
-        @test (fe.H, fe.K, fe.Nz) == (H, K, Nz)
-
-        # Dimension validation
-        @test_throws DimensionMismatch ForecastErrors(
-            randn(H + 1, T_eff),
-            Y_perp,
-            Z_perp;
-            H = H,
-            K = K,
-            Nz = Nz
-        )
-        @test_throws DimensionMismatch ForecastErrors(
-            y_perp,
-            randn(H * K, T_eff + 1),
-            Z_perp;
-            H = H,
-            K = K,
-            Nz = Nz
-        )
-        @test_throws DimensionMismatch ForecastErrors(
-            y_perp,
-            Y_perp,
-            randn(Nz + 1, T_eff);
-            H = H,
-            K = K,
-            Nz = Nz
-        )
+    @testset "SPIVwithVAR lag order" begin
+        @test SPIVwithVAR().p == 1
+        @test SPIVwithVAR(4).p == 4
+        @test SPIVwithVAR(2) === SPIVwithVAR(2)
+        @test SPIVwithVAR(2) != SPIVwithVAR(3)
+        @test_throws ArgumentError SPIVwithVAR(0)
+        @test_throws ArgumentError SPIVwithVAR(-1)
+        @test SPIVwithVAR(Int32(2)).p === 2
     end
 
     @testset "WeakIVDiagnostic stub" begin
@@ -68,6 +37,14 @@ using StatsBase
         @test all(isnan, r.bounds)
         @test size(r.confidence_set) == (0, K)
         @test r.degrees_freedom == 0
+        @test r.disconnected === false
+
+        # Full 6-field constructor
+        rf = RobustInference{Float64}(:AR, 3.84, [0.1 0.9], reshape([0.5], 1, 1), 1, true)
+        @test rf.method === :AR
+        @test rf.bounds == [0.1 0.9]
+        @test rf.degrees_freedom == 1
+        @test rf.disconnected === true
     end
 
     @testset "IRFBlock" begin
@@ -99,7 +76,7 @@ using StatsBase
     @testset "SPIVResult stub constructor" begin
         H, K, Nz, Nx, T_eff = 5, 2, 3, 4, 80
         β = randn(K)
-        V = let A = randn(K, K);
+        V = let A = randn(K, K)
             A * A'
         end          # PSD covariance
         u = randn(H, T_eff)
@@ -133,6 +110,16 @@ using StatsBase
             T_eff = T_eff
         )
         @test r_var isa SPIVResult{Float64, SPIVwithVAR}
+
+        # horizons / level keywords
+        r_h = SPIVResult(SPIVwithLP(), β, V, u; H = H, K = K, Nz = Nz, Nx = Nx,
+            T_eff = T_eff, horizons = [1, 3, 5, 7, 9], level = 0.9)
+        @test horizons(r_h) == [1, 3, 5, 7, 9]
+        @test r_h.level == 0.9
+        @test confint(r_h) == confint(r_h; level = 0.9)
+        @test r.horizons == collect(0:(H - 1)) && r.level == 0.95
+        @test_throws DimensionMismatch SPIVResult(SPIVwithLP(), β, V, u; H = H, K = K,
+            Nz = Nz, Nx = Nx, T_eff = T_eff, horizons = [0, 1])
 
         # Dimension validation
         @test_throws DimensionMismatch SPIVResult(
@@ -173,7 +160,7 @@ using StatsBase
     @testset "accessors return correct values" begin
         H, K, Nz, Nx, T_eff = 5, 2, 3, 4, 80
         β = randn(K)
-        V = let A = randn(K, K);
+        V = let A = randn(K, K)
             A * A'
         end
         u = randn(H, T_eff)
@@ -185,7 +172,10 @@ using StatsBase
         @test dof_residual(r) == T_eff - Nx - K
         @test residuals(r) == u
         @test stderror(r) ≈ sqrt.([V[i, i] for i in 1:K])
-        @test horizon(r) == H
+        @test horizons(r) == collect(0:(H - 1))
+        @test horizons(r) isa Vector{Int}
+        @test coefnames(r) == ["β[1]", "β[2]"]
+        @test r.level == 0.95
         @test weak_iv_test(r) === r.weak_iv
         @test robust_inference(r) === r.robust
         @test spec(r) === r.spec
@@ -207,7 +197,7 @@ using StatsBase
     @testset "accessor type stability" begin
         H, K, Nz, Nx, T_eff = 5, 2, 3, 4, 80
         β = randn(K)
-        V = let A = randn(K, K);
+        V = let A = randn(K, K)
             A * A'
         end
         u = randn(H, T_eff)
@@ -219,7 +209,7 @@ using StatsBase
         @test @inferred(dof_residual(r)) == T_eff - Nx - K
         @test @inferred(residuals(r)) === r.residuals
         @test @inferred(stderror(r)) isa Vector{Float64}
-        @test @inferred(horizon(r)) == H
+        @test @inferred(horizons(r)) == collect(0:(H - 1))
         @test @inferred(weak_iv_test(r)) === r.weak_iv
         @test @inferred(robust_inference(r)) === r.robust
         @test @inferred(spec(r)) === r.spec

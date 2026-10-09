@@ -1,6 +1,6 @@
 name = "SystemProjectionsIV"
 uuid = "25f786b6-7bab-4ac2-a587-eaae00a29f14"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Andrea Recine <andrearec123@gmail.com>"]
 
 [deps]

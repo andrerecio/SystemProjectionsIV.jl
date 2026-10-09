@@ -1,8 +1,12 @@
 module SystemProjectionsIV
 
-using LinearAlgebra: diag, qr, Symmetric, I, inv, kron, tr, eigvals, dot, mul!
+using LinearAlgebra: diag, qr, ColumnNorm, Symmetric, I, inv, kron, tr, eigvals, eigen, dot,
+                     norm,
+                     mul!
 using StatsBase
-using StatsFuns: norminvcdf, chisqinvcdf
+using StatsBase: coef, vcov, stderror, confint, coeftable, coefnames, nobs, dof_residual,
+                 residuals
+using StatsFuns: norminvcdf, normccdf, chisqinvcdf
 using CovarianceMatrices: aVar, Bartlett, NeweyWest, Andrews
 using Printf: @printf, @sprintf
 using RecipesBase
@@ -17,8 +21,11 @@ include("show.jl")
 include("recipes.jl")
 
 export AbstractSPIVSpec, SPIVwithLP, SPIVwithVAR
-export ForecastErrors, WeakIVDiagnostic, RobustInference, IRFBlock, SPIVResult
-export horizon, weak_iv_test, robust_inference, spec, irf
+export WeakIVDiagnostic, RobustInference, IRFBlock, SPIVResult
+export horizons, weak_iv_test, robust_inference, spec, irf
+# StatsBase generics extended for SPIVResult, re-exported so `using SystemProjectionsIV`
+# alone is enough.
+export coef, vcov, stderror, confint, coeftable, coefnames, nobs, dof_residual, residuals
 export spiv
 export lag, lags
 
