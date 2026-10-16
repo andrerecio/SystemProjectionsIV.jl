@@ -69,6 +69,60 @@ result = spiv(y, Y, ε; H = H, X = lags(Y, 4))        # your own lagged controls
 result = spiv(y, Y, ε, SPIVwithVAR(4); H = H)        # VAR(4) forecast errors
 ```
 
+## Worked example: Fieldhouse & Mertens, Table 1
+
+Fieldhouse & Mertens estimate the elasticity of U.S. TFP with respect to government R&D capital by SP-IV, with narrative R&D appropriations shocks as instruments. Their specification (`run_SPIV_total` in `docs/ext/fieldhouse_mertens/Make_Table_1.m`) uses 4-quarter averages of the outcomes at horizons `3:4:59`, and as controls 4 lags of TFP and seven other series. The series it needs ship with the package in `examples/fieldhouse_mertens/table1_data.csv`. Row 1 of Table 1, with exogenous nondefense shocks:
+
+```julia
+using SystemProjectionsIV
+
+# Fieldhouse & Mertens's quarterly data, 1947Q1–2021Q4 (date column + 17 series)
+lines = readlines(pkgdir(SystemProjectionsIV, "examples", "fieldhouse_mertens", "table1_data.csv"))
+names = split(lines[1], ',')[2:end]
+vals = permutedims(hcat((parse.(Float64, split(l, ',')[2:end]) for l in lines[2:end])...))
+d = Dict(String(n) => vals[:, j] for (j, n) in enumerate(names))
+
+ma4(x) = [t ≥ 4 ? sum(x[(t - 3):t]) / 4 : NaN for t in eachindex(x)]  # 4-quarter average ending at t
+
+y = ma4(d["ln_tfp_util_adj2"])   # log TFP (moderate infrastructure adjustment)
+Y = ma4(d["ln_rK_GRD"])          # log real government R&D capital
+z = d["z_NDEF"]                  # exogenous nondefense R&D appropriations shocks
+W = hcat((d[c] for c in ["ln_tfp_util_adj2", "ln_cum_rALL_NDEF", "ln_util", "ln_tfp_util",
+    "ln_rK_PRD_fernald", "R_EW_COMB_TECH", "ln_rK_GRD", "Military_news_scaled"])...)
+
+r = spiv(y, Y, z; H = 3:4:59, X = lags(W, 4), robust = :KLM, grid = (-1, 2))
+```
+
+```
+System Projections IV — local projections (LP)
+  horizons h=3:4:59 (H=15), K=1 endogenous, Nz=1 instruments, Nx=33 controls, T_eff=237
+
+Coefficients (strong-identification sandwich):
+  param      estimate   std.err.         z   95% CI
+  β[1]         0.1061     0.0208      5.11   [0.0654, 0.1469]
+
+Weak-IV (g): 39.042   critical value: 22.755   ⇒ instruments strong
+Robust (KLM, 95%, df=1): β[1]∈[-0.5539, 0.1452]
+  note: the set is disconnected; bounds are its hull (pieces in robust_inference(r).confidence_set)
+...
+```
+
+The elasticity is 0.11, as in the paper. The KLM confidence set is disconnected, and `spiv` reports its hull. Fieldhouse & Mertens report only the connected piece around their continuously-updated (CUE) estimate, (0.09, 0.15). `examples/fieldhouse_mertens/table1.jl` takes the piece around β̂ instead, which is the same piece in every row 1–5 specification, and reproduces rows 1–5 of the table:
+
+```bash
+julia --project examples/fieldhouse_mertens/table1.jl
+```
+
+| Row | Instruments | `spiv` (moderate) | Published (moderate) |
+|---|---|---|---|
+| 1 | Exo ND | 0.11 (0.09, 0.15) | 0.11 (0.09, 0.15) |
+| 2 | Exo ND, No NASA | 0.11 (0.08, 0.20) | 0.11 (0.08, 0.20) |
+| 3 | All ND | 0.10 (0.09, 0.14) | 0.10 (0.09, 0.14) |
+| 4 | Exo D | −0.13 (−1.21, 0.04) | −0.13 (−1.20, 0.04) |
+| 5 | All D | −0.12 (−1.12, 0.05) | −0.11 (−1.11, 0.05) |
+
+Rows 1–3 match the published table in all three TFP columns (low, moderate, high). Rows 4–5 differ in the second decimal. A line-by-line port of the point estimator in `run_SPIV_total` gives the same estimates as `spiv` on this data, so the gap comes from the data rather than the estimator. Rows 6–9 have two endogenous regressors and are not reproduced here.
+
 ## Examples
 
 Runnable scripts live under `examples/`:
@@ -85,6 +139,8 @@ Runnable scripts live under `examples/`:
   julia -e 'using Pkg; Pkg.activate("examples"); Pkg.develop(path="."); Pkg.add("Plots")'
   julia --project=examples examples/plots.jl
   ```
+
+- `examples/fieldhouse_mertens/table1.jl` — the Fieldhouse & Mertens Table 1 replication above; its data and license notice live in the same folder.
 
 ## What it estimates
 
